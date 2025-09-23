@@ -5,19 +5,6 @@ import logging
 # Load environment variables from .env file
 load_dotenv()
 
-# API Keys and credentials
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OUTLOOK_EMAIL = os.getenv("OUTLOOK_EMAIL")
-OUTLOOK_PASSWORD = os.getenv("OUTLOOK_PASSWORD")
-LOGIN_URL = os.getenv("LOGIN_URL", "http://localhost:5000")
-
-# Snowflake connection settings
-SNOW_USER = os.getenv("SNOW_USER", "Aishwarya1212")
-SNOW_PWD = os.getenv("SNOW_PWD", "Aishwaryatechjar@2025")
-SNOW_ACCOUNT = os.getenv("SNOW_ACCOUNT", "XIMRCYJ-PZ75081")
-SNOW_WAREHOUSE = os.getenv("SNOW_WAREHOUSE", "COMPUTE_WH")
-SNOW_DATABASE = os.getenv("SNOW_DATABASE", "JETKINGINTERVIEW")
-SNOW_SCHEMA = os.getenv("SNOW_SCHEMA", "PUBLIC")
 
 logging.basicConfig(level=logging.DEBUG, filename='interview_app.log', filemode='a',
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
@@ -53,7 +40,7 @@ class Config:
     
     # Snowflake Configuration
     SNOW_USER = os.getenv("SNOW_USER", "Aishwarya1212")
-    SNOW_PWD = os.getenv("SNOW_PWD", "Aishwaryatechjar@2025")
+    SNOW_PWD = os.getenv("SNOW_PWD", "Aishwaryatechjar@1111")
     SNOW_ACCOUNT = os.getenv("SNOW_ACCOUNT", "XIMRCYJ-PZ75081")
     SNOW_WAREHOUSE = os.getenv("SNOW_WAREHOUSE", "COMPUTE_WH")
     SNOW_DATABASE = os.getenv("SNOW_DATABASE", "JETKINGINTERVIEW")
@@ -74,12 +61,11 @@ class Config:
     # Email Configuration
     OUTLOOK_EMAIL = os.getenv("OUTLOOK_EMAIL")
     OUTLOOK_PASSWORD = os.getenv("OUTLOOK_PASSWORD")
-    LOGIN_URL = os.getenv("LOGIN_URL", "http://localhost:5000")
 
     #Audio Services 
     DEEPGRAM_STT = os.getenv("DEEPGRAM_STT","Unknown")
     ELEVENLABS_TTS = os.getenv("ELEVENLABS_TTS","Unknown")
 
-    GMAIL_EMAIL = "aaditya.patil.m@gmail.com"
-    GMAIL_APP_PASSWORD = "cmys gqxe udhi utto"
-    LOGIN_URL = "http://localhost:5000/login"
+    GMAIL_EMAIL = os.getenv("GMAIL_EMAIL","Unknown")
+    GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD","Unknown")
+    LOGIN_URL=os.getenv("LOGIN_URL","http://localhost:5000/login")

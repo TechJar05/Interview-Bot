@@ -371,18 +371,30 @@
         // 4. Line Chart - Daily Interview Count
         // Group interviews by date
         const dateCounts = interviewData.reduce((acc, obj) => {
-            if (obj.interview_date) {
-                const date = obj.interview_date.split('T')[0]; // Extract just the date part
+            if (obj.interview_ts) {
+                // Handle different date formats that might come from Snowflake
+                let date;
+                if (typeof obj.interview_ts === 'string') {
+                    // If it's already a string, extract just the date part
+                    date = obj.interview_ts.split('T')[0].split(' ')[0];
+                } else if (obj.interview_ts instanceof Date) {
+                    // If it's a Date object, format it
+                    date = obj.interview_ts.toISOString().split('T')[0];
+                } else {
+                    // Fallback: convert to string and extract date
+                    date = String(obj.interview_ts).split('T')[0].split(' ')[0];
+                }
                 acc[date] = (acc[date] || 0) + 1;
             }
             return acc;
         }, {});
-        
-        // Sort dates chronologically
+
+        // Sort dates chronologically and limit to last 30 days for better visualization
         const sortedDates = Object.keys(dateCounts).sort();
-        const interviewDates = sortedDates;
-        const interviewCounts = sortedDates.map(date => dateCounts[date]);
-        
+        const recentDates = sortedDates.slice(-30); // Show last 30 days
+        const interviewDates = recentDates;
+        const interviewCounts = recentDates.map(date => dateCounts[date]);
+
         new Chart(document.getElementById('dailyInterviewsChart').getContext('2d'), {
             type: 'line',
             data: {
@@ -394,7 +406,10 @@
                     borderColor: 'rgba(75, 192, 192, 1)',
                     borderWidth: 2,
                     tension: 0.1,
-                    fill: true
+                    fill: true,
+                    pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+                    pointBorderColor: '#fff',
+                    pointRadius: 4
                 }]
             },
             options: {
@@ -405,7 +420,7 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                return `${context.parsed.y} interviews`;
+                                return `${context.parsed.y} interviews on ${context.label}`;
                             }
                         }
                     }
@@ -413,6 +428,9 @@
                 scales: {
                     y: {
                         beginAtZero: true,
+                        ticks: {
+                            stepSize: 1 // Ensure whole numbers for interview counts
+                        },
                         title: {
                             display: true,
                             text: 'Number of Interviews'
@@ -422,6 +440,10 @@
                         title: {
                             display: true,
                             text: 'Date'
+                        },
+                        ticks: {
+                            maxRotation: 45, // Rotate date labels for better readability
+                            minRotation: 45
                         }
                     }
                 }

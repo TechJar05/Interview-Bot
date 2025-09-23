@@ -83,7 +83,7 @@ def dashboard():
 def recruiter_home():
     logger.debug("Recruiter home route accessed")
     if "user" not in session or session.get("role") != "recruiter":
-        logger.warning(f"{session.get('role')} Unauthorized access to recruiter home")
+        logger.warning("Unauthorized access to recruiter home")
         return redirect(url_for("login"))
     try:
         conn = get_snowflake_connection()

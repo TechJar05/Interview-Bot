@@ -390,12 +390,12 @@ The report should be structured with clear sections and use only information fro
 Interview Difficulty Level: {interview_data['difficulty_level'].capitalize()}
 Interview Duration: {duration}
 Format the report with these EXACT sections:
-### Key Strengths
+<h2>Key Strengths</h2>
 <table class=\"report-table\">
 <tr><th>Area</th><th>Examples</th><th>Rating</th></tr>
 [Create table rows for each strength with specific examples from interview]
 </table>
-### Areas for Improvement
+<h2>Areas for Improvement</h2>
 <table class=\"report-table\">
 <tr><th>Area</th><th>Suggestions</th></tr>
 [Create table rows for each improvement area with actionable suggestions]
@@ -513,7 +513,7 @@ Transcript:
                     parts = []
                     # Primary observation with frequency
                     primary, primary_count = top_items[0]
-                    parts.append(f"Most common: '{primary}' ({primary_count} of {total}).")
+                    parts.append(f"'{primary}' ({primary_count} of {total}).")
                     # Secondary observations
                     if len(top_items) > 1:
                         others = [f"'{item}'" for item, _ in top_items[1:]]
@@ -579,20 +579,20 @@ Transcript:
                     }
 
                 detailed_visual_html = """
-<div class=\"report-section\">
-  <h3>Visual Feedback Summary</h3>
-  <table class=\"report-table\">
-    <tr>
-      <th>Aspect</th>
-      <th>Feedback</th>
-    </tr>
-    <tr><td>Appearance</td><td>{pa_paragraph}</td></tr>
-    <tr><td>Body Language</td><td>{bl_paragraph}</td></tr>
-    <tr><td>Facial Expressions</td><td>{fe_paragraph}</td></tr>
-    <tr><td>Setting</td><td>{env_paragraph}</td></tr>
-  </table>
-</div>
-""".format(
+                    <div class=\"report-section\">
+                    <h3>Visual Feedback Summary</h3>
+                    <table class=\"report-table\">
+                        <tr>
+                        <th>Aspect</th>
+                        <th>Feedback</th>
+                        </tr>
+                        <tr><td>Appearance</td><td>{pa_paragraph}</td></tr>
+                        <tr><td>Body Language</td><td>{bl_paragraph}</td></tr>
+                        <tr><td>Facial Expressions</td><td>{fe_paragraph}</td></tr>
+                        <tr><td>Setting</td><td>{env_paragraph}</td></tr>
+                    </table>
+                    </div>
+                    """.format(
                     pa_paragraph=visual_detail_json.get("professional_appearance", build_detailed_text(professional_appearance)),
                     bl_paragraph=visual_detail_json.get("body_language", build_detailed_text(body_language)),
                     fe_paragraph=visual_detail_json.get("facial_expressions", build_detailed_text(facial_expressions)),
@@ -600,70 +600,38 @@ Transcript:
                 )
             except Exception as e:
                 logger.error(f"Error processing visual feedback: {str(e)}")
-#                 visual_feedback['summary'] = "Error processing visual feedback"
-#         voice_prompt = f"""
-# Create a concise 3-sentence spoken feedback summary based on this report:
-# {report_content}
-# The feedback should:
-# - Be professional and factual
-# - Mention one strength and one area for improvement
-# - Include visual feedback if available
-# - Be exactly 3 sentences
-# """
-#         voice_response = openai.ChatCompletion.create(
-#             model="gpt-4o",
-#             messages=[{"role": "user", "content": voice_prompt}],
-#             temperature=0.6
-#         )
-#         voice_feedback = voice_response.choices[0].message.content
-#         # Use Indian tone for TTS and select Hindi voice when interview language prefers Hindi
-#         try:
-#             lang_pref = (interview_data.get('language') or 'english').strip().lower() if isinstance(interview_data, dict) else 'english'
-#         except Exception:
-#             lang_pref = 'english'
-#         # Parse gender from language preference, default to female
-#         gender = 'female'
-#         lang_pref_raw = lang_pref
-#         if ' male' in lang_pref_raw or lang_pref_raw.endswith(' male') or lang_pref_raw.startswith('male') or lang_pref_raw.endswith('(male)'):
-#             gender = 'male'
-#             lang_pref = lang_pref_raw.replace('male', '').replace('(male)', '').strip()
-#         elif ' female' in lang_pref_raw or lang_pref_raw.endswith(' female') or lang_pref_raw.startswith('female') or lang_pref_raw.endswith('(female)'):
-#             gender = 'female'
-#             lang_pref = lang_pref_raw.replace('female', '').replace('(female)', '').strip()
-#         tts_lang = 'hi' if lang_pref in {'hindi', 'english+hindi', 'bilingual', 'hinglish', 'en+hi'} else 'en'
-#         voice_audio = text_to_speech(voice_feedback, tts_lang, gender) if voice_feedback else None
         summary_card = f"""
-<div class=\"interview-summary-card\" style="
-    display: flex;
-    justify-content: space-between;
-    background: linear-gradient(135deg,#6e8efb,#a777e3);
-    padding: 1rem;
-    border-radius: 8px;
-    color: white;
-    margin-bottom: 1rem;
-    font-family: sans-serif;
-">
-<div>
-    <div><small>Candidate Name</small><br><strong>{interview_data['student_info'].get('name', 'N/A')}</strong></div>
-    <div style="margin-top:0.5rem;"><small>Roll No</small><br><strong>{interview_data['student_info'].get('roll_no', 'N/A')}</strong></div>
-    <div style="margin-top:0.5rem;"><small>Batch No</small><br><strong>{interview_data['student_info'].get('batch_no', 'N/A')}</strong></div>
-</div>
-<div>
-    <div><small>Center</small><br><strong>{interview_data['student_info'].get('center', 'N/A')}</strong></div>
-    <div style="margin-top:0.5rem;"><small>Course</small><br><strong>{interview_data['student_info'].get('course', 'N/A')}</strong></div>
-    <div style="margin-top:0.5rem;"><small>Evaluation Date</small><br><strong>{interview_data['student_info'].get('eval_date', 'N/A')}</strong></div>
-</div>
-<div style="align-self:center;">
-    <span class=\"{status_class}\" style="
-        background: gold;
-        color: black;
-        padding: 0.5rem 1rem;
-        border-radius: 999px;
-        font-weight: bold;
-    ">{status}</span>
-</div>
-</div>
-"""
+            <div class=\"interview-summary-card\" style="
+                display: flex;
+                justify-content: space-between;
+                background: linear-gradient(135deg,#6e8efb,#a777e3);
+                padding: 1rem;
+                border-radius: 8px;
+                color: white;
+                margin-bottom: 1rem;
+                font-family: sans-serif;
+            ">
+            <div>
+                <div><small>Candidate Name</small><br><strong>{interview_data['student_info'].get('name', 'N/A')}</strong></div>
+                <div style="margin-top:0.5rem;"><small>Roll No</small><br><strong>{interview_data['student_info'].get('roll_no', 'N/A')}</strong></div>
+                <div style="margin-top:0.5rem;"><small>Batch No</small><br><strong>{interview_data['student_info'].get('batch_no', 'N/A')}</strong></div>
+            </div>
+            <div>
+                <div><small>Center</small><br><strong>{interview_data['student_info'].get('center', 'N/A')}</strong></div>
+                <div style="margin-top:0.5rem;"><small>Course</small><br><strong>{interview_data['student_info'].get('course', 'N/A')}</strong></div>
+                <div style="margin-top:0.5rem;"><small>Evaluation Date</small><br><strong>{interview_data['student_info'].get('eval_date', 'N/A')}</strong></div>
+            </div>
+            <div style="align-self:center;">
+                <span class=\"{status_class}\" style="
+                    background: gold;
+                    color: black;
+                    padding: 0.5rem 1rem;
+                    border-radius: 999px;
+                    font-weight: bold;
+                ">{status}</span>
+            </div>
+            </div>
+            """
         # Append detailed visual section (strictly based on this interview) to the LLM report
         full_report_html = summary_card + report_content + detailed_visual_html
         return {
