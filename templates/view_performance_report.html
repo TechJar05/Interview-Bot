@@ -1,0 +1,75 @@
+{% if pdf_export %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Performance Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fff; margin: 0; padding: 40px 0; }
+        .container { max-width: 800px; margin: 0 auto; padding: 32px 32px 32px 32px; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        h2 { text-align: center; margin-bottom: 32px; }
+        .section { margin-bottom: 32px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+        th, td { border: 1px solid #bbb; padding: 12px 18px; text-align: left; }
+        th { background: #b31e35; color: #fff; }
+        .interview-summary-card { display: flex; justify-content: space-between; background: linear-gradient(135deg,#6e8efb,#a777e3); padding: 1rem; border-radius: 8px; color: white; margin-bottom: 1rem; font-family: sans-serif; }
+        .interview-summary-card small { color: #f8f8f8; }
+        .interview-summary-card strong { color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Performance Report</h2>
+        <div class="section">
+            {{ report|safe }}
+        </div>
+    </div>
+</body>
+</html>
+{% else %}
+{% extends "base.html" %}
+{% block title %}View Performance Report{% endblock %}
+{% block content %}
+<style>
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 18px;
+    }
+    .report-table th, .report-table td {
+        border: 1px solid #bbb;
+        padding: 12px 18px;
+        text-align: left;
+    }
+    .report-table th {
+        background: #b31e35;
+        color: #fff;
+    }
+    .interview-summary-card {
+        display: flex;
+        justify-content: space-between;
+        background: linear-gradient(135deg,#6e8efb,#a777e3);
+        padding: 1rem;
+        border-radius: 8px;
+        color: white;
+        margin-bottom: 1rem;
+        font-family: sans-serif;
+    }
+    .interview-summary-card small { color: #f8f8f8; }
+    .interview-summary-card strong { color: #fff; }
+</style>
+<div class="container mt-5 mb-5" style="max-width: 800px; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 32px 32px 32px 32px;">
+    <h2 class="mb-4 text-center">Performance Report</h2>
+    <div class="section mb-4">
+        {{ report|safe }}
+    </div>
+    <div class="d-flex justify-content-end">
+        {% if session['role'] == 'student' %}
+            <a href="{{ url_for('dashboard.student_performance') }}" class="btn btn-secondary">Back to Reports</a>
+        {% else %}
+            <a href="{{ url_for('dashboard.performance_reports') }}" class="btn btn-secondary">Back to Reports</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% endif %}

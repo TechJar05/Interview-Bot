@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #ffffff;  /* Plain white */
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+ 
+    .register-container {
+      background: #fff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+      width: 350px;
+      text-align: center;
+    }
+ 
+    .register-container h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+ 
+    .register-container input[type="text"],
+    .register-container input[type="email"],
+    .register-container input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+ 
+    .register-container button {
+      width: 100%;
+      padding: 12px;
+      background: #e74c3c;  /* Red color */
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+ 
+    .register-container button:hover {
+      background: #c0392b;  /* Darker red on hover */
+    }
+ 
+    .register-container p {
+      margin-top: 15px;
+      font-size: 14px;
+    }
+ 
+    .register-container p.error {
+      color: red;
+    }
+ 
+    .register-container p.success {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <div class="register-container">
+    <h2>Register</h2>
+    <form method="POST" action="{{ url_for('auth.register') }}">
+      <input type="text" name="name" placeholder="Name" required><br>
+      <input type="text" name="course_name" placeholder="Course Name" required><br>
+      <input type="email" name="email_id" placeholder="Email ID" required><br>
+      <input type="text" name="mobile_no" placeholder="Mobile No" required><br>
+      <input type="text" name="center" placeholder="Center" required><br>
+      <input type="text" name="batch_no" placeholder="Batch No" required><br>
+      <input type="password" name="password" placeholder="Password" required><br>
+      <button type="submit">Register</button>
+    </form>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    {% if message %}<p class="success">{{ message }}</p>{% endif %}
+  </div>
+</body>
+</html>
+ 
+ 

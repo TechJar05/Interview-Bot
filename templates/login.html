@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            display: flex;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            width: 900px;
+        }
+        .login-left {
+            flex: 1;
+            padding: 40px;
+            background: #fff;
+        }
+        .login-left h2 {
+            margin-top: 0;
+        }
+        .login-left input[type="text"],
+        .login-left input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: rgb(255, 230, 230);  /* light red tint */
+        }
+        .login-left button {
+            width: 100%;
+            padding: 12px;
+            background: rgb(199, 36, 59);   /* Jetking red */
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .login-right {
+            flex: 1;
+            background: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-right img {
+            max-width: 100%;
+            max-height: 400px;
+        }
+        .small-links {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #777;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-left">
+            <img
+                src="{{ url_for('static', filename='images/Jetking_Logo.png') }}"
+                alt="Jetking Logo"
+                style="display:block; margin:0 auto 20px; height:60px;"
+            />
+
+            <h2>Welcome!</h2>
+            <p>Log In to start your interview</p>
+            {% if error %}
+                <p class="error">{{ error }}</p>
+            {% endif %}
+            <form method="POST" action="/">
+                <label>Email Id</label>
+                <input type="text" name="username" required>
+                <label>Password</label>
+                <input type="password" name="password" required>
+                <div class="small-links">
+                    <label><input type="checkbox"> Remember me</label>
+                    <a href="{{ url_for('auth.forgot_password') }}">Forgot Password?</a>
+                </div>
+
+                <button type="submit">Login</button>
+            </form>
+            <p style="text-align:center; margin-top: 15px;">Don’t have an Account? <a href="{{ url_for('auth.register') }}">Register</a></p>
+        </div>
+        <div class="login-right">
+            <img src="{{ url_for('static', filename='images/login_logo.jpg') }}" alt="Login Illustration">
+        </div>
+    </div>
+</body>
+</html>

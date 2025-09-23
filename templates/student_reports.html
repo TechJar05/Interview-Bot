@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+<h1 style="text-align:center; margin-bottom: 30px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+  Interview Reports
+</h1>
+
+<!-- KPI Container -->
+<div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 40px; flex-wrap: wrap;">
+  <!-- Average Rating KPI Card -->
+  <div style="
+      background: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      width: 200px;
+      padding: 20px;
+      text-align: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #222;
+  ">
+    <div style="font-size: 48px; font-weight: 700; line-height: 1;">
+      {{ average_rating }}
+    </div>
+    <div style="font-size: 14px; color: #666; margin-bottom: 10px;">
+      Average Rating
+    </div>
+    <div>
+      <!-- Line graph icon SVG -->
+      <svg width="40" height="40" fill="#1f77b4" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M3 17h2v-7H3v7zm4 0h2V7H7v10zm4 0h2v-4h-2v4zm4 0h2v-2h-2v2zm4 0h2v-9h-2v9z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Completed Interviews KPI Card -->
+  <div style="
+      background: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      width: 200px;
+      padding: 20px;
+      text-align: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #222;
+  ">
+    <div style="font-size: 48px; font-weight: 700; line-height: 1;">
+      {{ completed_interviews }}
+    </div>
+    <div style="font-size: 14px; color: #666; margin-bottom: 10px;">
+      Completed Interviews
+    </div>
+    <div>
+      <!-- Checkmark icon SVG -->
+      <svg width="40" height="40" fill="#1f77b4" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4z"/>
+      </svg>
+    </div>
+  </div>
+</div>
+{% endblock %} 

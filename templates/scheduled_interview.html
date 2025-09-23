@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Scheduled Interview{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 100%; padding: 20px;">
+    <h2 class="mb-4 text-center">Your Scheduled Interviews</h2>
+ 
+    {% if interviews %}
+    <div class="table-responsive">
+        <h5>Student Information</h5>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #dee2e6;">
+            <thead style="background-color: #c7243b; color: white;">
+                <tr>
+                    {% for col in student_cols %}
+                        <th style="border: 1px solid #dee2e6; padding: 8px; white-space: nowrap;">{{ col }}</th>
+                    {% endfor %}
+                    <th style="border: 1px solid #dee2e6; padding: 8px; white-space: nowrap;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for interview in interviews %}
+                <tr>
+                    {% for item in interview.info %}
+                    <td style="border: 1px solid #dee2e6; padding: 8px; white-space: nowrap;">{{ item }}</td>
+                    {% endfor %}
+                    <td style="border: 1px solid #dee2e6; padding: 8px;">{{ interview.jd_name }}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 8px;">
+                        {% if interview.status == 'Scheduled' %}
+                            <form method="post" action="/start_scheduled_interview/{{ interview.jd_id or 'None' }}/{{ interview.interview_ts }}" style="display:inline;">
+                                <button type="submit" style="background-color: #c7243b; color: white; padding: 4px 8px; border: none; border-radius: 4px;">Start Interview</button>
+                            </form>
+                        {% elif interview.status == 'Completed Interview' %}
+                            <span style="background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Completed Interview</span>
+                        {% else %}
+                            <span style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 4px;">No Interview</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+ 

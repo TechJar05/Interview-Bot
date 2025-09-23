@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Banner as Navbar -->
+<div style="background: linear-gradient(90deg, #d32f2f 0%, #e53935 100%);
+            color: white; border-radius: 10px; padding: 14px 20px;
+            margin: 0 auto 18px auto; max-width: 1200px;
+            display: flex; justify-content: space-between; align-items: center;">
+    
+    <!-- Left Text -->
+    <div>
+        <div style="font-size: 1.35rem; font-weight: 700;">Welcome to Your Learning Journey!</div>
+        <div style="font-size: 1rem; font-weight: 400; opacity: 0.95;">Track your progress, complete interviews, and achieve your career goals.</div>
+    </div>
+
+    <!-- Right Profile Dropdown -->
+    <div class="profile-dropdown" style="position: relative;">
+        <div id="dropdownToggle" style="display: flex; align-items: center; cursor: pointer;">
+            <!-- Icon -->
+            <div style="width: 40px; height: 40px; background: #fff; color: #555;
+                        border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 8px;">
+                <i class="fas fa-user"></i>
+            </div>
+            <!-- Text -->
+            <span style="font-weight: 600; font-size: 14px;">Welcome {{ user_name }}</span>
+            <i class="fas fa-chevron-down" style="margin-left: 6px;"></i>
+        </div>
+
+        <!-- Dropdown Menu -->
+<div id="dropdownMenu" style="
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 55px;
+    background: #fff;
+    color: #333;
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    min-width: 250px;
+    z-index: 100;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    overflow: hidden;
+    animation: fadeIn 0.3s ease;">
+    
+    <!-- Header -->
+    <div style="
+        padding: 12px 18px;
+        font-weight: bold;
+        background: #f9f9f9;
+        border-bottom: 1px solid #eee;
+        color: #d32f2f;
+        font-size: 14px;">
+        Profile Info
+    </div>
+    
+    <!-- Details -->
+    <div style="padding: 12px 18px; font-size: 14px; border-bottom: 1px solid #f1f1f1;">
+        <strong>Email:</strong><br>
+        <span style="color: #666;">{{ user_name }}</span>
+    </div>
+    <div style="padding: 12px 18px; font-size: 14px; border-bottom: 1px solid #f1f1f1;">
+        <strong>Course:</strong><br>
+        <span style="color: #666;">{{ user_course }}</span>
+    </div>
+    
+    <!-- Logout -->
+    <a href="{{ url_for('auth.logout') }}" style="
+        display: block;
+        padding: 12px 18px;
+        text-decoration: none;
+        color: #d32f2f;
+        font-weight: bold;
+        font-size: 14px;
+        transition: background 0.3s;">
+        Logout
+    </a>
+</div>
+
+<!-- Hover Effect -->
+<style>
+#dropdownMenu a:hover {
+    background: #fbe9e7; /* Light red hover */
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+    </div>
+</div>
+
+<!-- JavaScript for Dropdown -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const toggle = document.getElementById("dropdownToggle");
+    const menu = document.getElementById("dropdownMenu");
+
+    toggle.addEventListener("click", () => {
+        menu.style.display = (menu.style.display === "block") ? "none" : "block";
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener("click", (e) => {
+        if (!toggle.contains(e.target) && !menu.contains(e.target)) {
+            menu.style.display = "none";
+        }
+    });
+});
+</script>
+
+
+
+<!-- Performance Analytics Heading (wider) -->
+<div style="max-width:1200px;margin:0 auto 18px auto;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:1.15rem;font-weight:600;color:#222;">Your Performance Analytics</div>
+
+<!-- KPI Container -->
+<div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 40px; flex-wrap: wrap;">
+
+  <!-- Average Rating KPI Card -->
+  <div style="
+      background: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: 4px;
+      width: 240px;
+      height: 90px;
+      padding: 4px 12px 4px 12px;
+      text-align: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #222;
+  ">
+    <div style="font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 2px;">
+      {{ average_rating }}
+    </div>
+    <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+      Average Rating
+    </div>
+    <div>
+      <!-- Line graph icon SVG -->
+      <svg width="40" height="40" fill="#1f77b4" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M3 17h2v-7H3v7zm4 0h2V7H7v10zm4 0h2v-4h-2v4zm4 0h2v-2h-2v2zm4 0h2v-9h-2v9z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Completed Interviews KPI Card -->
+  <div style="
+      background: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: 4px;
+      width: 240px;
+      height: 90px;
+      padding: 4px 12px 4px 12px;
+      text-align: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #222;
+  ">
+    <div style="font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 2px;">
+      {{ completed_interviews }}
+    </div>
+    <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+      Completed Interviews
+    </div>
+    <div>
+      <!-- Checkmark icon SVG -->
+      <svg width="40" height="40" fill="#1f77b4" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4z"/>
+      </svg>
+    </div>
+  </div>
+
+</div>
+
+<!-- Two-column Graphs Section -->
+<div style="display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; align-items: flex-start; margin-bottom: 32px;">
+  <!-- Left: Skill Breakdown -->
+  <div style="flex: 1 1 340px; max-width: 480px; min-width: 320px; height: 380px; display: flex; flex-direction: column; justify-content: center;">
+    {% set skill_colors = {'Technical Knowledge': '#2196f3', 'Communication': '#ffd600', 'Problem Solving': '#2196f3', 'Confidence': '#e53935', 'Time Management': '#2196f3'} %}
+    <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 24px 24px 16px 24px; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+      <div style="font-size: 1.35rem; font-weight: 700; margin-bottom: 18px; color: #222; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">Skill Breakdown</div>
+      {% for skill, value in skill_avg.items() %}
+        {% if value >= 6 %}
+          {% set bar_color = '#43a047' %} {# green #}
+        {% elif value >= 4 %}
+          {% set bar_color = '#ffd600' %} {# yellow #}
+        {% else %}
+          {% set bar_color = '#e53935' %} {# red #}
+        {% endif %}
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+          <span style="font-size: 1.08rem; color: #222;">{{ skill }}</span>
+          <span style="font-size: 1.08rem; color: #222; font-weight: 500;">{{ '%.1f' % value }}/10</span>
+        </div>
+        <div style="width: 100%; height: 10px; background: #eee; border-radius: 6px; margin-bottom: 14px;">
+          <div style="height: 100%; border-radius: 6px; background: {{ bar_color }}; width: {{ (value/10*100)|round(1) }}%; transition: width 0.6s;"></div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <!-- Right: Interview-wise Total Rating Bar Chart -->
+  <div style="flex: 1 1 340px; max-width: 480px; min-width: 320px; height: 380px; display: flex; flex-direction: column; justify-content: center;">
+    <div id="avg-bar-chart" style="height: 100%;"></div>
+  </div>
+</div>
+
+<!-- Student Interview Reports Section -->
+{% if student_reports and student_reports|length > 0 %}
+<div style="max-width: 900px; margin: 40px auto 0 auto;">
+  <h2 style="text-align:center; margin-bottom: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">Your Previous Interview Reports</h2>
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;">
+    {% for report in student_reports %}
+      <div style="background: linear-gradient(135deg,#6e8efb,#a777e3); color: white; border-radius: 10px; padding: 24px 32px; min-width: 260px; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; align-items: center;">
+        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 10px;">Interview Date</div>
+        <div style="font-size: 1.1rem; margin-bottom: 18px;">
+          {% if report.date %}{{ report.date.strftime('%d %b %Y, %I:%M %p') }}{% else %}Unknown{% endif %}
+        </div>
+        <a href="{{ url_for('view_report', filename=report.filename) }}" target="_blank" class="btn btn-light" style="color: #6e8efb; font-weight: bold; border-radius: 20px; padding: 8px 24px;">
+          <i class="fas fa-file-pdf"></i> View PDF Report
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if session['role'] != 'student' %}
+<a href="{{ url_for('dashboard.export_student_info') }}" class="btn btn-outline-primary btn-sm">Export Student Info to Excel</a>
+<a href="{{ url_for('dashboard.export_interview_ratings') }}" class="btn btn-outline-primary btn-sm">Export Interview Ratings to Excel</a>
+<a href="{{ url_for('dashboard.export_visual_feedback') }}" class="btn btn-outline-primary btn-sm">Export visual feedback to Excel</a>
+{% endif %}
+
+{% if session['role'] == 'student' %}
+<div id="interviewNotification" style="display:none;" class="alert alert-success mt-3">
+    <strong>Interview Scheduled!</strong> A recruiter has scheduled an interview for you.
+    <a href="/interview" class="btn btn-success btn-sm ms-2">Start Interview</a>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    fetch("/student_interview_notification")
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "scheduled") {
+                document.getElementById("interviewNotification").style.display = "block";
+            }
+        });
+});
+</script>
+{% endif %}
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+    // Parse JSON data passed from Flask
+    const skillAvg = JSON.parse('{{ skill_avg | tojson | safe }}');
+    const lineData = JSON.parse('{{ line_data | safe }}');
+
+    // 1. Skill Breakdown: handled by Jinja and HTML above
+
+    // 2. Interview-wise Total Rating Bar Chart
+    function getBarColors(values) {
+      return values.map(v => v >= 8 ? '#43a047' : (v >= 6 ? '#ffd600' : '#e53935'));
+    }
+    const barTrace = {
+        x: lineData.interview_numbers,
+        y: lineData.avg_ratings,
+        type: 'bar',
+        marker: {
+            color: getBarColors(lineData.avg_ratings),
+            line: { width: 1.5, color: '#444' }
+        },
+        hoverinfo: 'y+text',
+        text: lineData.avg_ratings.map(String),
+        textposition: 'auto',
+    };
+    const barLayout = {
+        title: {
+            text: "Interview-wise Total Rating",
+            font: { size: 22, family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }
+        },
+        xaxis: {
+            title: "Interview Number",
+            tickmode: 'linear',
+            dtick: 1,
+            showgrid: false,
+            zeroline: false,
+            tickfont: { size: 12 }
+        },
+        yaxis: {
+            title: "Total Rating (out of 10)",
+            range: [0, 10],
+            showgrid: false,
+            zeroline: true,
+            showline: true,
+            linecolor: '#888',
+            linewidth: 2,
+            tickfont: { size: 12 }
+        },
+        margin: { t: 80, b: 100, l: 60, r: 40 },
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff',
+        font: { color: '#222' },
+        hoverlabel: { bgcolor: "#eee", font: { color: '#222' } },
+        bargap: 0.25
+    };
+    Plotly.newPlot('avg-bar-chart', [barTrace], barLayout, {responsive: true});
+</script>
+{% endblock %}

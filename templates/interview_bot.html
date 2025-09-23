@@ -1,0 +1,1663 @@
+{% extends "base.html" %}
+{% block title %}Voice Interview Bot{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Interview Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .header {
+            background: linear-gradient(135deg,#E52437,#FF6372);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 10px 10px;
+        }
+        .interview-container {
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .mic-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #E52437;
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        .mic-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+        .mic-button.recording {
+            animation: pulse 1.5s infinite;
+            background-color: #dc3545;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .progress-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 15px auto;
+        }
+        .progress-text {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .interview-complete-message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+        .report-modal {
+            max-width: 1000px;
+        }
+        .report-content {
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+        .report-header {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white;
+        }
+        .final-feedback {
+            margin-top: 20px;
+        }
+        .setup-section .card {
+            background: linear-gradient(270deg, #FEF3F4 20%);
+            color: #000000;
+        }
+        .interview-section {
+            display: none;
+        }
+        .interview-section .card {
+            background: linear-gradient(270deg, #FEF3F4 0%, #FFFFFF 100%);
+            color: #000000;
+            height: 80vh;
+        }
+        .start-new-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 10px 20px;
+            font-weight: bold;
+            background-color: #E52437;
+            border-color: #E52437;
+            color: white;
+        }
+        .start-new-btn:hover {
+            background-color: #C41E2E;
+            border-color: #C41E2E;
+            color: white;
+        }
+        .camera-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            margin: 20px auto;
+            border: 2px solid #E52437;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .camera-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .status-badge {
+            font-size: 1.2rem;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+        }
+        .status-selected {
+            background-color: #28a745;
+            color: white;
+        }
+        .status-onhold {
+            background-color: #ffc107;
+            color: black;
+        }
+        .status-rejected {
+            background-color: #dc3545;
+            color: white;
+        }
+        .vad-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #ccc;
+            transition: background-color 0.3s;
+        }
+        .vad-active {
+            background-color: #28a745;
+            box-shadow: 0 0 10px #28a745;
+        }
+        .vad-inactive {
+            background-color: #dc3545;
+        }
+        .speech-status {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .speech-timeout {
+            font-size: 0.8rem;
+            color: #dc3545;
+            margin-top: 5px;
+            text-align: center;
+        }
+        .time-warning {
+            color: #dc3545;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .summary-card {
+            background: linear-gradient(90deg, #7f9cf5 0%, #a78bfa 100%);
+            border-radius: 12px;
+            padding: 24px 32px;
+            color: #fff;
+            margin-bottom: 32px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .summary-label {
+            font-size: 18px;
+            color: #d1d5db;
+        }
+        .summary-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .status-badge {
+            background: #facc15;
+            color: #000;
+            border-radius: 24px;
+            padding: 8px 24px;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .report-table {
+            width: 100%;
+            margin-bottom: 1rem;
+            color: #212529;
+            border-collapse: collapse;
+        }
+        .report-table th {
+            background-color: #f8f9fa;
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .report-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        .report-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .report-table tr:hover {
+            background-color: #f1f1f1;
+        }
+        .rating-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+        .rating-excellent {
+            background-color: #28a745;
+            color: white;
+        }
+        .rating-good {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .rating-average {
+            background-color: #ffc107;
+            color: black;
+        }
+        .rating-poor {
+            background-color: #dc3545;
+            color: white;
+        }
+        .report-section {
+            margin-bottom: 30px;
+        }
+        .report-section h3 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eaeaea;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+        .report-section h4 {
+            color: #34495e;
+            margin-top: 20px;
+            margin-bottom: 15px;
+        }
+        .strength-item {
+            background-color: #e8f5e9;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+        .improvement-item {
+            background-color: #fff3e0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+        .student-info-form {
+            margin-bottom: 20px;
+        }
+        .student-info-form .form-group {
+            margin-bottom: 15px;
+        }
+        .jd-upload-section {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .jd-preview {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .strengths-section {
+            background-color: #f0fff0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .improvements-section {
+            background-color: #fff8f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .strengths-section h4, .improvements-section h4 {
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+        .strengths-section i {
+            margin-right: 10px;
+        }
+        .improvements-section i {
+            margin-right: 10px;
+        }
+        .final-decision {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .decision-selected {
+            color: #28a745;
+        }
+        .decision-onhold {
+            color: #ffc107;
+        }
+        .decision-rejected {
+            color: #dc3545;
+        }
+        .question-transcript {
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #E52437;
+        }
+        .question-text {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .difficulty-indicator {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        .difficulty-beginner {
+            background-color: #28a745;
+            color: white;
+        }
+        .difficulty-medium {
+            background-color: #ffc107;
+            color: black;
+        }
+        .difficulty-advanced {
+            background-color: #dc3545;
+            color: white;
+        }
+        .transcript-container {
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            width: 100%;
+        }
+        .answer-transcript {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #6c757d;
+        }
+        .answer-text {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .interview-content-container {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            height: 100%;
+            gap: 20px;
+        }
+        .transcript-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 80%;
+        }
+        .video-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .video-controls-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .custom-summary-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 16px;
+            }
+            .custom-summary-right {
+                align-items: flex-start;
+            }
+            .interview-content-container {
+                flex-direction: column;
+            }
+            .transcript-column, .video-column {
+                flex: none;
+                width: 100%;
+            }
+            .camera-container {
+                height: 200px;
+            }
+        }
+        /* Fix: Remove any blur effect from modal backdrop */
+        body.modal-open, .modal-backdrop.show {
+            filter: none !important;
+            -webkit-filter: none !important;
+            backdrop-filter: none !important;
+            background: rgba(0,0,0,0.5) !important;
+        }
+    </style>
+</head>
+<body>
+    
+
+    <div class="row setup-section">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Interview Setup</h3>
+                </div>
+                <div class="card-body">
+                    <div class="camera-container" id="cameraContainer">
+                        <video id="cameraFeed" class="camera-feed" autoplay playsinline></video>
+                    </div>
+                    <button type="button" id="startInterviewBtn" class="btn btn-lg w-100" style="background-color: #E52437; color: white;">
+                        <i class="fas fa-play"></i> Start Interview
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <div class="row interview-section">
+            <div class="col-md-10 offset-md-1">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3>Voice Interview</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="interview-content-container">
+                            <div class="transcript-column">
+                                <h4>Interview Transcript</h4>
+                                <div class="transcript-container" id="transcriptContainer">
+                                    <!-- Transcript will be added here -->
+                                </div>
+                            </div>
+                            <div class="video-column">
+                                <h4>Video Feed</h4>
+                                <div class="camera-container">
+                                    <video id="activeCameraFeed" class="camera-feed" autoplay playsinline></video>
+                                    <div id="vadIndicator" class="vad-indicator"></div>
+                                    <div id="speechStatus" class="speech-status">Speech: Inactive</div>
+                                </div>
+                                <div class="video-controls-container">
+                                    <button id="micButton" class="mic-button">
+                                        <i class="fas fa-microphone"></i>
+                                    </button>
+                                    <div id="speechTimeoutWarning" class="speech-timeout" style="display: none;">
+                                        <i class="fas fa-clock"></i> Time Remaining: <span id="timeLeft">8:40</span>
+                                    </div>
+                                    <div class="progress-container">
+                                        <div class="progress-text" id="progressTextDisplay">0% Complete</div>
+                                        <div class="progress">
+                                            <div id="progressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="interviewCompleteMessage" class="interview-complete-message">
+                            Interview completed! Thank you for participating.
+                            <button id="viewReportBtn" class="btn btn-outline-success btn-sm ms-3">
+                                <i class="fas fa-chart-bar"></i> View Performance Report
+                            </button>
+                        </div>
+                        <!-- <div class="text-center mt-3">
+                            <button id="endInterviewBtn" class="btn btn-danger" style="display:none;">
+                                <i class="fas fa-stop"></i> End Interview
+                            </button>
+                        </div> -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button id="startNewInterviewBtn" class="start-new-btn">
+            <i class="fas fa-redo"></i> Start New Interview
+        </button>
+    </div>
+
+    <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl report-modal">
+            <div class="modal-content">
+                <div class="modal-header report-header">
+                    <h5 class="modal-title" id="reportModalLabel">Interview Evaluation Report</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="report-content" id="reportContent">
+                        <div class="text-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p>Generating your detailed report...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="printReportBtn">
+                        <i class="fas fa-print"></i> Print Report
+                    </button>
+                    <button type="button" class="btn btn-success" id="downloadReportBtn">
+                        <i class="fas fa-download"></i> Download PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Pause Popup Modal -->
+<div class="modal fade" id="pausePopupModal" tabindex="-1" aria-labelledby="pausePopupModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title" id="pausePopupModalLabel">Pause Detected</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="hidePausePopup()"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p id="pausePopupMessage">You seem to have paused. What would you like to do?</p>
+        <div class="progress my-3">
+          <div id="pausePopupTimerBar" class="progress-bar bg-danger" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="d-flex justify-content-center gap-3">
+          <button id="continueAnsweringBtn" class="btn btn-primary">
+            <i class="fas fa-play"></i> Continue Answering
+          </button>
+          <button id="nextQuestionBtn" class="btn btn-secondary">
+            <i class="fas fa-forward"></i> Next Question
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- Replace the existing JavaScript section in your interview_bot.html with this improved version -->
+<script>
+$(document).ready(function() {
+    let recognition;
+    let currentQuestionAudio;
+    let isRecording = false;
+    let interviewInProgress = false;
+    let autoStartRecording = true;
+    let mediaStream = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let vadCheckInterval;
+    let silenceTimer;
+    const INTERVIEW_DURATION = 900; // 15 minutes in seconds
+    let remainingTime = INTERVIEW_DURATION;
+    let interviewTimer;
+    let accumulatedAnswer = "";
+    let speechStartTime;
+    let jdText = "";
+    let currentDifficulty = "";
+    let pauseCheckInterval = null;
+    let isContinuingAnswer = false;
+    
+    // Add timer variables for pause popup
+    let pauseTimerInterval = null;
+    let pauseTimerValue = 15;
+    let lastActivityTime = null;
+    let customPauseInterval = null;
+    let ignoreNextRecognitionEnd = false;
+    window.INTERVIEW_LANGUAGE = "{{ language|e }}";
+
+    // Initialize UI elements
+    $('#interviewCompleteMessage').hide();
+    $('#startNewInterviewBtn').hide();
+    
+    // Initialize camera
+    async function initCamera() {
+        try {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            
+            mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: "user"
+                },
+                audio: false
+            });
+            
+            const cameraFeed = document.getElementById('cameraFeed');
+            const activeCameraFeed = document.getElementById('activeCameraFeed');
+            
+            if (cameraFeed) cameraFeed.srcObject = mediaStream;
+            if (activeCameraFeed) activeCameraFeed.srcObject = mediaStream;
+            
+            return true;
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            return false;
+        }
+    }
+    
+    // Improved audio recorder initialization
+    async function initAudioRecorder() {
+        try {
+            // Stop any existing audio stream
+            if (mediaRecorder && mediaRecorder.stream) {
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+            
+            const audioStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                }
+            });
+            
+            // Use a more compatible MIME type
+            let mimeType = 'audio/webm;codecs=opus';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'audio/webm';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'audio/mp4';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        mimeType = ''; // Use default
+                    }
+                }
+            }
+            
+            console.log('[Audio] Using MIME type:', mimeType);
+            
+            mediaRecorder = new MediaRecorder(audioStream, {
+                mimeType: mimeType || undefined,
+                audioBitsPerSecond: 128000
+            });
+            
+            audioChunks = []; // Reset chunks
+            
+            mediaRecorder.ondataavailable = function(event) {
+                console.log('[MediaRecorder] Data available, size:', event.data.size);
+                if (event.data && event.data.size > 0) {
+                    audioChunks.push(event.data);
+                    console.log('[MediaRecorder] Added chunk, total chunks:', audioChunks.length);
+                }
+            };
+            
+            mediaRecorder.onstart = function() {
+                console.log('[MediaRecorder] Recording started');
+                audioChunks = []; // Clear previous chunks when starting new recording
+            };
+            
+            mediaRecorder.onstop = function() {
+                console.log('[MediaRecorder] Recording stopped, total chunks:', audioChunks.length);
+            };
+            
+            mediaRecorder.onerror = function(event) {
+                console.error('[MediaRecorder] Error:', event.error);
+            };
+            
+            console.log('[Audio] MediaRecorder initialized successfully');
+            return true;
+        } catch (err) {
+            console.error("Error initializing audio recorder:", err);
+            return false;
+        }
+    }
+    
+    // Get complete accumulated audio (for final transcription)
+    function getAllAccumulatedAudio() {
+        if (audioChunks.length === 0) {
+            console.log('[getAllAccumulatedAudio] No chunks available');
+            return null;
+        }
+        
+        try {
+            const blob = new Blob(audioChunks, { 
+                type: mediaRecorder?.mimeType || 'audio/webm' 
+            });
+            console.log('[getAllAccumulatedAudio] Created blob from', audioChunks.length, 'chunks, size:', blob.size);
+            
+            return blob.size > 0 ? blob : null;
+        } catch (error) {
+            console.error('[getAllAccumulatedAudio] Error creating blob:', error);
+            return null;
+        }
+    }
+    
+    function audioBufferToWav(buffer) {
+        let numOfChan = buffer.numberOfChannels,
+            length = buffer.length * numOfChan * 2 + 44,
+            bufferArray = new ArrayBuffer(length),
+            view = new DataView(bufferArray),
+            channels = [],
+            sample,
+            offset = 0,
+            pos = 0;
+
+        // write WAVE header
+        setUint32(0x46464952); // "RIFF"
+        setUint32(length - 8);
+        setUint32(0x45564157); // "WAVE"
+
+        setUint32(0x20746d66); // "fmt " chunk
+        setUint32(16); // length = 16
+        setUint16(1); // PCM (uncompressed)
+        setUint16(numOfChan);
+        setUint32(buffer.sampleRate);
+        setUint32(buffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+        setUint16(numOfChan * 2); // block-align
+        setUint16(16); // 16-bit (hardcoded)
+
+        setUint32(0x61746164); // "data" - chunk
+        setUint32(length - pos - 4);
+
+        // write interleaved data
+        for (let i = 0; i < buffer.numberOfChannels; i++)
+            channels.push(buffer.getChannelData(i));
+
+        while (pos < length) {
+            for (let i = 0; i < numOfChan; i++) {
+                // interleave channels
+                sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+                sample = (0.5 + sample * 32767) | 0; // convert to 16-bit PCM
+                view.setInt16(pos, sample, true); // little-endian
+                pos += 2;
+            }
+            offset++;
+        }
+
+        return bufferArray;
+
+        function setUint16(data) {
+            view.setUint16(pos, data, true);
+            pos += 2;
+        }
+
+        function setUint32(data) {
+            view.setUint32(pos, data, true);
+            pos += 4;
+        }
+    }
+
+    async function convertToWav(blob) {
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioContext = new AudioContext();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        
+        // Convert to WAV
+        const wavBuffer = audioBufferToWav(audioBuffer);
+        return new Blob([wavBuffer], { type: 'audio/wav' });
+    }
+    
+    // Modified transcription function - only called when user clicks Next Question
+    async function transcribeCompleteAnswer() {
+        console.log('[Transcribe] Starting complete answer transcription...');
+        
+        let transcript = '';
+        try {
+            let audioBlob = getAllAccumulatedAudio();
+            if (!audioBlob) {
+                console.log('[Transcribe] No audio chunks available, using fallback text');
+                return accumulatedAnswer.trim();
+            }
+            
+            console.log('[Transcribe] Sending complete audio blob, size:', audioBlob.size);
+            const wavBlob = await convertToWav(audioBlob);
+            const formData = new FormData();
+            formData.append('audio', wavBlob, 'complete_answer.wav');
+            formData.append('language',window.INTERVIEW_LANGUAGE || 'english');
+
+            const response = await fetch('/transcribe', { 
+                method: 'POST', 
+                body: formData 
+            });
+
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
+
+            const data = await response.json();
+            transcript = data.transcript || '';
+            console.log('[Transcribe] Server transcription result:', transcript);
+        } catch (err) {
+            console.error('[Transcribe] Error, falling back to browser STT:', err);
+            transcript = accumulatedAnswer.trim();
+        }
+
+        // Clear audio chunks after transcription
+        audioChunks = [];
+        return transcript;
+    }
+    
+    // Modified startRecording function
+    function startRecording() {
+        if (!interviewInProgress) return;
+
+        try {
+            speechStartTime = Date.now();
+            
+            // Stop any existing recognition
+            if (recognition) {
+                recognition.abort();
+                isRecording = false;
+            }
+            
+            // Start MediaRecorder first
+            if (mediaRecorder && mediaRecorder.state === 'inactive') {
+                mediaRecorder.start(1000); // Collect 1-second chunks but don't send them
+                console.log('[Recording] MediaRecorder started - accumulating chunks');
+            }
+            
+            setTimeout(() => {
+                if (recognition) {
+                    recognition.start();
+                    isRecording = true;
+                    $('#micButton').addClass('recording');
+                    lastActivityTime = Date.now();
+                    startVADChecking();
+                    console.log('[Recording] Speech recognition started');
+                }
+            }, 300);
+        } catch(e) {
+            console.error('Error starting recognition:', e);
+        }
+    }
+    
+    // Modified stopRecording function
+    function stopRecording() {
+        if (isRecording) {
+            isRecording = false;
+            $('#micButton').removeClass('recording');
+            stopVADChecking();
+            
+            if (recognition) {
+                recognition.stop();
+            }
+            
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                console.log('[Recording] MediaRecorder stopped - chunks accumulated');
+            }
+        }
+    }
+    
+    // Check for browser support
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('Your browser does not support speech recognition. Please use Chrome or Edge.');
+        $('#micButton').prop('disabled', true);
+    } else {
+        // Initialize speech recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.lang = 'en-US';
+        
+        recognition.onaudiostart = function() {
+            console.log('[Recognition] Audio started');
+            isRecording = true;
+            $('#micButton').addClass('recording');
+            $('#speechTimeoutWarning').show();
+            lastActivityTime = Date.now();
+            startCustomPauseDetection();
+        };
+        
+        recognition.onsoundend = function() {
+            console.log('[Recognition] Sound ended');
+            setTimeout(function() {
+                if (isRecording) {
+                    recognition.stop();
+                }
+            }, 3000);
+        };
+        
+        recognition.onerror = function(event) {
+            console.error('Speech recognition error', event.error);
+            stopRecording();
+            updateVADIndicator(false);
+        };
+        
+        recognition.onend = function () {
+            console.log('[Recognition] Recognition ended');
+            if (ignoreNextRecognitionEnd) {
+                ignoreNextRecognitionEnd = false;
+                return;
+            }
+            
+            if (!isContinuingAnswer) {
+                stopCustomPauseDetection();
+                stopRecording();
+                updateVADIndicator(false);
+            }
+        };
+        
+        recognition.onresult = function(event) {
+            let finalTranscript = '';
+            let interimDetected = false;
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interimDetected = true;
+                }
+            }
+
+            if (finalTranscript) {
+                accumulatedAnswer += ' ' + finalTranscript;
+            }
+
+            if (finalTranscript || interimDetected) {
+                lastActivityTime = Date.now();
+            }
+        };
+    }
+    
+    // Start timer for entire interview
+    function startInterviewTimer() {
+        clearInterval(interviewTimer);
+        remainingTime = INTERVIEW_DURATION;
+        updateTimeDisplay();
+        
+        interviewTimer = setInterval(function() {
+            remainingTime = Math.max(0, remainingTime - 1);
+            updateTimeDisplay();
+            
+            if (remainingTime <= 0) {
+                clearInterval(interviewTimer);
+                stopRecording();
+                $('#speechTimeoutWarning').addClass('time-warning');
+                interviewComplete();
+            }
+        }, 1000);
+    }
+    
+    // Update time display
+    function updateTimeDisplay() {
+        const hours = Math.floor(remainingTime / 3600);
+        const minutes = Math.floor((remainingTime % 3600) / 60);
+        const seconds = Math.floor(remainingTime % 60);
+        const timeString = `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        
+        $('#timeLeft').text(timeString);
+        
+        if (remainingTime <= 300) {
+            $('#speechTimeoutWarning').addClass('time-warning');
+        } else {
+            $('#speechTimeoutWarning').removeClass('time-warning');
+        }
+    }
+    
+    // Update VAD indicator - SIMPLIFIED (no more continuous audio sending)
+    function updateVADIndicator(active) {
+        const indicator = $('#vadIndicator');
+        indicator.removeClass('vad-active vad-inactive');
+        if (active) {
+            indicator.addClass('vad-active');
+            $('#speechStatus').text('Speech: Active');
+        } else {
+            indicator.addClass('vad-inactive');
+            $('#speechStatus').text('Speech: Inactive');
+        }
+    }
+    
+    // Start VAD checking - RESTORED with proper speech detection
+    function startVADChecking() {
+        vadCheckInterval = setInterval(() => {
+            if (isRecording) {
+                checkSpeechActivity();
+            }
+        }, 2000); // Check every 2 seconds
+    }
+    
+    // Stop VAD checking
+    function stopVADChecking() {
+        clearInterval(vadCheckInterval);
+        updateVADIndicator(false);
+    }
+    
+    // RESTORED: Improved speech activity checking
+    async function checkSpeechActivity() {
+        if (!isRecording) return;
+        
+        try {
+            const audioBlob = await getAudioChunkForSpeechCheck();
+            
+            if (!audioBlob) {
+                console.log('[VAD] No audio blob available for speech check');
+                updateVADIndicator(false);
+                return;
+            }
+            
+            console.log('[VAD] Sending audio blob for speech check, size:', audioBlob.size);
+            
+            const reader = new FileReader();
+            reader.onload = function() {
+                const base64data = reader.result;
+                
+                $.ajax({
+                    url: '/check_speech',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        audio: base64data
+                    }),
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            updateVADIndicator(response.speech_detected);
+                            
+                            // Update last activity time if speech is detected
+                            if (response.speech_detected) {
+                                lastActivityTime = Date.now();
+                            }
+                            
+                            // If speech has ended and we're recording, this could indicate natural pause
+                            if (response.speech_ended && isRecording) {
+                                console.log('[VAD] Speech ended detected');
+                                // Don't automatically stop here - let the pause detection handle it
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Error checking speech:', xhr);
+                        updateVADIndicator(false);
+                    }
+                });
+            };
+            reader.readAsDataURL(audioBlob);
+        } catch (error) {
+            console.error('[VAD] Error in checkSpeechActivity:', error);
+            updateVADIndicator(false);
+        }
+    }
+    
+    // JD Upload handler
+    $(document).on('click', '#uploadJdBtn', function() {
+        console.log('[JD Upload] Button clicked');
+        const fileInput = document.getElementById('jdFile');
+        if (!fileInput || fileInput.files.length === 0) {
+            alert('Please select a file first');
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append('jd_file', file);
+        
+        $('#uploadJdBtn').html('<i class="fas fa-spinner fa-spin"></i> Uploading...').prop('disabled', true);
+        
+        $.ajax({
+            url: '/upload_jd',
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                if (response.status === 'success') {
+                    jdText = response.jd_text;
+                    $('#jdPreview').text(jdText.substring(0, 1000) + (jdText.length > 1000 ? '...' : ''));
+                    $('#jdPreviewContainer').show();
+                    $('#uploadJdBtn').html('<i class="fas fa-check"></i> Uploaded').removeClass('btn-outline-secondary').addClass('btn-success');
+                } else {
+                    alert('Error: ' + response.message);
+                    $('#uploadJdBtn').html('<i class="fas fa-upload"></i> Upload').prop('disabled', false);
+                }
+            },
+            error: function(xhr) {
+                alert('Error uploading file: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                $('#uploadJdBtn').html('<i class="fas fa-upload"></i> Upload').prop('disabled', false);
+            }
+        });
+    });
+    
+    // Client-side sanitization function
+    function sanitizeQuestionText(text) {
+        if (!text) return text;
+        text = text.replace(/^\s*\*+\s*/, '');
+        text = text.replace(/\s*\*+\s*$/, '');
+        text = text.replace(/\*+([^*]*?)\*+/g, '$1');
+        text = text.replace(/\s+/g, ' ');
+        return text.trim();
+    }
+    
+    // Add question to transcript
+    function addQuestionToTranscript(question, questionNumber, totalQuestions, difficultyLevel) {
+        const diff = (difficultyLevel || currentDifficulty || 'medium').toLowerCase();
+        const difficultyClass = `difficulty-${diff}`;
+        const difficultyText = diff.charAt(0).toUpperCase() + diff.slice(1);
+        
+        const sanitizedQuestion = sanitizeQuestionText(question);
+        
+        const questionHtml = `
+            <div class="question-transcript">
+                <div class="question-text">
+                    Question ${questionNumber}/${totalQuestions}
+                </div>
+                <div><span class="difficulty-indicator ${difficultyClass}">${difficultyText}</span> ${sanitizedQuestion}</div>
+            </div>
+        `;
+        
+        $('#transcriptContainer').append(questionHtml);
+        $('#transcriptContainer').scrollTop($('#transcriptContainer')[0].scrollHeight);
+    }
+    
+    function addAnswerToTranscript(answer) {
+        if (!answer || !answer.trim()) return;
+        const answerHtml = `
+            <div class="answer-transcript">
+                <div class="answer-text">Your Answer</div>
+                <div>${answer}</div>
+            </div>
+        `;
+        $('#transcriptContainer').append(answerHtml);
+        $('#transcriptContainer').scrollTop($('#transcriptContainer')[0].scrollHeight);
+    }
+    
+    // Send answer to server
+    function sendAnswerToServer(answer, isFinal, speakingTime) {
+        const video = document.getElementById('activeCameraFeed');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const frameData = canvas.toDataURL('image/jpeg');
+
+        console.log('[DEBUG] Sending answer to server:', { answer, isFinal, speakingTime });
+        
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                url: '/process_answer',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    answer: answer,
+                    frame: frameData,
+                    is_final: isFinal,
+                    speaking_time: speakingTime
+                }),
+                success: function(response) {
+                    console.log('[DEBUG] Received response from /process_answer:', response);
+                    if (isFinal) {
+                        accumulatedAnswer = "";
+                    }
+                    if (response.status === 'answer_processed') {
+                        updateProgress(response.current_question, response.total_questions);
+                        $('#currentQuestionNum').text(response.current_question + 1);
+                        if (response.current_question >= 5) {
+                            $('#endInterviewBtn').show();
+                        }
+                        if (response.interview_complete) {
+                            $('#endInterviewBtn').show();
+                            interviewComplete();
+                        }
+                    }
+                    resolve(response);
+                },
+                error: function(xhr) {
+                    console.error('[DEBUG] Error processing answer:', xhr);
+                    alert('An error occurred while processing your answer. Moving to the next question.');
+                    setTimeout(askQuestion, 1500);
+                    reject(xhr);
+                }
+            });
+        });
+    }
+    
+    // Start interview
+    $('#startInterviewBtn').click(async function() {
+        const cameraInitialized = await initCamera();
+        if (!cameraInitialized) {
+            alert('Could not access camera. Interview will continue without visual analysis.');
+        }
+        
+        const audioInitialized = await initAudioRecorder();
+        if (!audioInitialized) {
+            alert('Could not access microphone. Please enable microphone access to continue.');
+            return;
+        }
+        
+        $(this).html('<i class="fas fa-spinner fa-spin"></i> Starting...').prop('disabled', true);
+        
+        $.ajax({
+            url: '/start_interview',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({}),
+            success: function(response) {
+                if (response.status === 'started') {
+                    $('.setup-section').hide();
+                    $('.interview-section').show();
+                    $('#totalQuestions').text(response.total_questions);
+                    interviewInProgress = true;
+                    startInterviewTimer();
+                    $('#transcriptContainer').empty();
+                    currentDifficulty = (response.difficulty_level || 'medium').toLowerCase();
+                    askQuestion();
+                    $('#speechTimeoutWarning').show();
+                }
+            },
+            error: function(xhr) {
+                alert('Error: ' + (xhr.responseJSON?.message || 'Failed to start interview'));
+                $('#startInterviewBtn').html('<i class="fas fa-play"></i> Start Interview').prop('disabled', false);
+            }
+        });
+    });
+    
+    // Ask question function
+    function askQuestion() {
+        console.log('[DEBUG] Fetching next question from /get_question');
+        accumulatedAnswer = "";
+        // Clear audio chunks for new question
+        audioChunks = [];
+
+        $.get('/get_question', function(response) {
+            console.log('[DEBUG] Received response from /get_question:', response);
+
+            if (response.status === 'completed') {
+                interviewComplete();
+            } else if (response.status === 'success') {
+                $('#currentQuestionNum').text(response.question_number);
+                updateProgress(response.question_number - 1, response.total_questions);
+
+                addQuestionToTranscript(
+                    response.question,
+                    response.question_number,
+                    response.total_questions,
+                    response.difficulty_level
+                );
+
+                if (response.audio) {
+                    const audio = new Audio("data:audio/mp3;base64," + response.audio);
+                    $('#audioStatus').text('Playing audio...');
+
+                    audio.onended = function() {
+                        $('#audioStatus').text('Audio finished.');
+                        if (autoStartRecording) {
+                            startRecording();
+                        }
+                    };
+
+                    audio.play().catch((err) => {
+                        console.warn('Audio auto-play was blocked by browser:', err);
+                        $('#audioStatus').text('Click play to hear the question.');
+                        if (autoStartRecording) {
+                            startRecording();
+                        }
+                    });
+                } else {
+                    console.warn('No audio available for this question.');
+                    $('#audioStatus').text('');
+                    if (autoStartRecording) {
+                        startRecording();
+                    }
+                }
+            }
+        }).fail(function(xhr) {
+            console.error('[DEBUG] Error getting question:', xhr);
+            alert('Error getting question: ' + (xhr.responseJSON?.message || 'Unknown error'));
+        });
+    }
+    
+    // Play audio function
+    function playAudio(base64Data, onEndedCallback) {
+        if (!base64Data) {
+            if (onEndedCallback) onEndedCallback();
+            return;
+        }
+        const audio = new Audio('data:audio/wav;base64,' + base64Data);
+        audio.play();
+        if (onEndedCallback) {
+            audio.onended = onEndedCallback;
+        }
+    }
+    
+    // Update progress display
+    function updateProgress(current, total) {
+        const percent = Math.round((current / total) * 100);
+        $('#progressBar').css('width', percent + '%');
+        $('#progressTextDisplay').text(`${percent}% Complete`);
+    }
+    
+    // Microphone button click handler
+    $('#micButton').click(function() {
+        if (!interviewInProgress) return;
+        
+        if (isRecording) {
+            recognition.stop();
+        } else {
+            startRecording();
+        }
+    });
+    
+    // Interview completion handler
+    function interviewComplete() {
+        interviewInProgress = false;
+        stopRecording();
+        stopCustomPauseDetection();
+        clearInterval(interviewTimer);
+
+        $('#interviewCompleteMessage').show();
+        $('#startNewInterviewBtn').show();
+        accumulatedAnswer = "";
+
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+        }
+
+        $('#speechTimeoutWarning').hide();
+    }
+    
+    // Reset interview handler
+    $(document).on('click', '#startNewInterviewBtn', function() {
+        $.ajax({
+            url: '/reset_interview',
+            type: 'POST',
+            success: function() {
+                $('.interview-section').hide();
+                $('.setup-section').show();
+                $('#startInterviewBtn').html('<i class="fas fa-play"></i> Start Interview').prop('disabled', false);
+                $('#interviewCompleteMessage').hide();
+                $('#startNewInterviewBtn').hide();
+                $('#progressBar').css('width', '0%');
+                $('#progressTextDisplay').text('0% Complete');
+                $('#jdPreviewContainer').hide();
+                $('#uploadJdBtn').html('<i class="fas fa-upload"></i> Upload').removeClass('btn-success').addClass('btn-outline-secondary').prop('disabled', false);
+                jdText = "";
+
+                // Reset all form fields
+                $('#studentName, #rollNo, #batchNo, #center, #course, #evalDate, #difficultyLevel, #jd_id, #status').val("");
+
+                // Clear audio chunks
+                audioChunks = [];
+                accumulatedAnswer = "";
+
+                initCamera();
+                initAudioRecorder();
+            },
+            error: function(xhr) {
+                alert('Error: ' + (xhr.responseJSON?.message || 'Failed to reset interview'));
+            }
+        });
+    });
+    
+    // View report button
+    $('#viewReportBtn').click(function() {
+        $(this).prop('disabled', true);
+        var reportModalEl = document.getElementById('reportModal');
+        if (reportModalEl) {
+            var modalInstance = bootstrap.Modal.getInstance(reportModalEl);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        }
+        showInterviewReport();
+    });
+
+    // End Interview button
+    $('#endInterviewBtn').off('click').on('click', function() {
+        if (!interviewInProgress) return;
+        if (!confirm('Are you sure you want to end the interview now?')) return;
+        interviewComplete();
+        $(this).hide();
+    });
+    
+    // Print and download report handlers
+    $('#printReportBtn').click(function() {
+        window.print();
+    });
+    
+    $('#downloadReportBtn').click(function() {
+        const { jsPDF } = window.jspdf;
+        const element = document.getElementById('reportContent');
+        
+        html2canvas(element, {
+            scale: 2,
+            logging: true,
+            useCORS: true
+        }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210;
+            const pageHeight = 295;
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+            
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+            
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+            
+            pdf.save('interview_report.pdf');
+        });
+    });
+    
+    // Show interview report
+    function showInterviewReport() {
+        $.ajax({
+            url: '/generate_report',
+            type: 'GET',
+            success: function(response) {
+                if (response.status === "success") {
+                    $('#reportContent').html(response.report || '');
+                    
+                    if (response.voice_audio) {
+                        playAudio(response.voice_audio);
+                    }
+
+                    var reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
+                    reportModal.show();
+                } else {
+                    $('#reportContent').html(`
+                        <div class="alert alert-danger">
+                            <h4>Error Generating Report</h4>
+                            <p>${response.message || 'Failed to generate report. Please try again.'}</p>
+                        </div>
+                    `);
+                    var reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
+                    reportModal.show();
+                }
+            },
+            error: function(xhr) {
+                $('#reportContent').html(`
+                    <div class="alert alert-danger">
+                        <h4>Error Loading Report</h4>
+                        <p>${xhr.responseJSON?.message || 'Failed to load report. Please try again.'}</p>
+                    </div>
+                `);
+                var reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
+                reportModal.show();
+            }
+        });
+    }
+    
+    // Custom pause detection functions
+    function startCustomPauseDetection() {
+        stopCustomPauseDetection();
+        customPauseInterval = setInterval(checkCustomPause, 1000);
+    }
+
+    function stopCustomPauseDetection() {
+        if (customPauseInterval) {
+            clearInterval(customPauseInterval);
+            customPauseInterval = null;
+        }
+    }
+
+    function checkCustomPause() {
+        if (!isRecording || !interviewInProgress) return;
+
+        const timeSinceLastSpeech = Date.now() - lastActivityTime;
+        // Trigger after 10 seconds of inactivity
+        if (timeSinceLastSpeech > 10000 && !$("#pauseDialog").length) {
+            stopCustomPauseDetection();
+            if (isRecording && recognition) recognition.stop();
+
+            const dialogHtml = `
+            <div id="pauseDialog" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background-color: rgba(0,0,0,0.5); z-index: 9999;">
+                <div class="pause-dialog bg-white p-4 rounded shadow" style="max-width: 400px;">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-question-circle text-warning me-2" style="font-size: 24px;"></i>
+                        <h5 class="mb-0">Are you still there?</h5>
+                    </div>
+                    <p>Would you like to continue with your answer or move to the next question?</p>
+                    <div class="progress mb-3">
+                        <div id="pauseProgress" class="progress-bar bg-warning" role="progressbar" style="width: 100%"></div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-3">
+                        <button id="continueAnswerBtn" class="btn btn-primary me-2">
+                            <i class="fas fa-microphone me-1"></i> Continue Answer
+                        </button>
+                        <button id="customNextQuestionBtn" class="btn btn-secondary">
+                            <i class="fas fa-forward me-1"></i> Next Question
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+
+            $("body").append(dialogHtml);
+
+            let timeLeft = 10;
+            const timerInterval = setInterval(() => {
+                timeLeft--;
+                const percent = (timeLeft / 10) * 100;
+                $("#pauseProgress").css("width", percent + "%");
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    if ($("#pauseDialog").length) {
+                        $("#customNextQuestionBtn").trigger("click");
+                    }
+                }
+            }, 1000);
+
+            // Event handlers for pause dialog
+            $(document).off('click', '#continueAnswerBtn');
+            $(document).off('click', '#customNextQuestionBtn');
+
+            $(document).on('click', '#continueAnswerBtn', function () {
+                clearInterval(timerInterval);
+                $("#pauseDialog").remove();
+                lastActivityTime = Date.now();
+                speechStartTime = Date.now();
+                isContinuingAnswer = true;
+                if (recognition && isRecording) {
+                    recognition.abort();
+                    isRecording = false;
+                }
+                setTimeout(() => {
+                    startRecording();
+                    startCustomPauseDetection();
+                    $('#micButton').addClass('recording');
+                }, 500);
+            });
+
+            $(document).on('click', '#customNextQuestionBtn', async function () {
+                clearInterval(timerInterval);
+                $("#pauseDialog").remove();
+                $(document).off('click', '#continueAnswerBtn');
+                $(document).off('click', '#customNextQuestionBtn');
+
+                // **MAIN CHANGE**: Use the complete audio transcription here
+                let finalText = '';
+                try {
+                    console.log('[Pause] Calling complete transcription for final answer...');
+                    const transcript = await transcribeCompleteAnswer();
+                    finalText = (transcript || '').trim();
+                    if (finalText) {
+                        accumulatedAnswer = finalText;
+                        addAnswerToTranscript(finalText);
+                    }
+                } catch (e) {
+                    console.error('Complete transcription error:', e);
+                    finalText = (accumulatedAnswer || '').trim();
+                }
+                
+                if (!finalText || !finalText.trim()) {
+                    finalText = (accumulatedAnswer || '').trim();
+                }
+
+                sendAnswerToServer(finalText, true, (Date.now() - speechStartTime) / 1000)
+                    .then(() => { askQuestion(); })
+                    .catch(() => { askQuestion(); });
+            });
+
+            // Auto fallback in case of any issue
+            setTimeout(function () {
+                if ($("#pauseDialog").length) {
+                    clearInterval(timerInterval);
+                    $("#customNextQuestionBtn").trigger("click");
+                }
+            }, 10000);
+        }
+    }
+    
+    // Initialize camera and audio when page loads
+    initCamera();
+    initAudioRecorder();
+    
+    // Add a manual test button for debugging (you can remove this later)
+    if (window.location.search.includes('debug=true')) {
+        $('body').append(`
+            <button id="testAudioBtn" style="position: fixed; top: 10px; right: 10px; z-index: 9999;" class="btn btn-warning">
+                Test Complete Audio
+            </button>
+        `);
+        
+        $('#testAudioBtn').click(async function() {
+            console.log('[Manual Test] Testing complete audio transcription...');
+            if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+                console.log('[Manual Test] Starting recording for test...');
+                if (mediaRecorder && mediaRecorder.state === 'inactive') {
+                    audioChunks = [];
+                    mediaRecorder.start(1000);
+                }
+                setTimeout(async () => {
+                    console.log('[Manual Test] Stopping recording and testing transcription...');
+                    mediaRecorder.stop();
+                    setTimeout(async () => {
+                        const result = await transcribeCompleteAnswer();
+                        console.log('[Manual Test] Complete transcription result:', result);
+                        alert('Transcription result: ' + (result || 'No result'));
+                    }, 1000);
+                }, 5000);
+            } else {
+                mediaRecorder.stop();
+                setTimeout(async () => {
+                    const result = await transcribeCompleteAnswer();
+                    console.log('[Manual Test] Complete transcription result:', result);
+                    alert('Transcription result: ' + (result || 'No result'));
+                }, 1000);
+            }
+        });
+    }
+});
+</script>
+</body>
+</html>
+{% endblock %}

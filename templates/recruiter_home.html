@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+{% block title %}Recruiter Home{% endblock %}
+{% block content %}
+<style>
+    body {
+        background: #f8f9fa;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+    .container {
+        margin: 40px auto 60px auto;
+        max-width: 800px;
+        padding-left: 15px;
+        padding-right: 15px;
+        flex: 1 0 auto;
+    }
+    h2 {
+        margin-top: 30px;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+    .table-responsive {
+        max-height: 400px;
+        overflow-y: auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        padding: 15px;
+        margin-bottom: 24px;
+    }
+    table.table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+    }
+    table.table thead {
+        background-color: #b31e35;
+        color:white;
+    }
+    table.table th, table.table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #dee2e6;
+        vertical-align: middle;
+        text-align: left;
+    }
+    table.table th {
+        font-weight: 600;
+    }
+    table.table tbody tr:hover {
+        background-color: #f1f3f5;
+        transition: background-color 0.2s ease;
+    }
+    #visual-feedback-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#visual-feedback-table td,
+#visual-feedback-table th {
+    word-wrap: break-word;
+    white-space: normal;
+    max-width: 200px;
+}
+
+
+.visual-feedback-wrapper {
+    overflow-x: auto;
+}
+
+    .export-btn-container {
+        text-align: right;
+        margin-bottom: 10px;
+    }
+    .chart-container {
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+        text-align: center;
+        min-width: 0;
+    }
+    h3 {
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+    .chart-container canvas {
+        width: 100% !important;
+        max-width: 480px;
+        height: 140px !important;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+
+<div class="container" style="max-width: 800px; margin: 40px auto 30px auto; padding-left: 15px; padding-right: 15px;">
+    <!-- Graphs Section: 2x2 grid, always two per row, with spacing -->
+    <div style="display: flex; flex-wrap: wrap; gap: 0 24px;">
+        <div class="chart-container" style="width: 48%; box-sizing: border-box; padding: 10px; margin-bottom: 18px; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <h3>Interview Status Distribution</h3>
+            <canvas id="statusPieChart"></canvas>
+        </div>
+        <div class="chart-container" style="width: 48%; box-sizing: border-box; padding: 10px; margin-bottom: 18px; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <h3>Difficulty Level Distribution</h3>
+            <canvas id="difficultyBarChart"></canvas>
+        </div>
+        <div class="chart-container" style="width: 48%; box-sizing: border-box; padding: 10px; margin-bottom: 18px; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <h3>Top 3 Centers by Student Count</h3>
+            <canvas id="topCentersChart"></canvas>
+        </div>
+        <div class="chart-container" style="width: 48%; box-sizing: border-box; padding: 10px; margin-bottom: 18px; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <h3>Daily Interview Count</h3>
+            <canvas id="dailyInterviewsChart"></canvas>
+        </div>
+    </div>
+</div>
+<div class="container" style="max-width: 1300px; margin: 0 auto 60px auto; padding-left: 15px; padding-right: 15px;">
+    <!-- Interview Table FIRST -->
+    <h2>Interview Table</h2>
+    <div class="table-responsive mb-4">
+        <table class="table table-striped mb-0">
+            <thead class="table-success">
+            <tr>
+                {% for col in interview_table_cols %}
+                <th class="fw-bold">{{ col.replace('_', ' ').title() }}</th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in interview_table %}
+            <tr>
+                {% for item in row %}
+                <td>{{ item }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Interview Ratings SECOND -->
+    <h2>Interview Ratings</h2>
+    <div class="export-btn-container">
+        <a href="{{ url_for('dashboard.export_interview_ratings') }}" class="btn btn-outline-primary btn-sm">Export Interview Ratings to Excel</a>
+    </div>
+    <div class="table-responsive mb-4">
+        <table class="table table-striped mb-0">
+            <thead class="table-success">
+            <tr>
+                {% for col in interview_ratings_cols %}
+                <th class="fw-bold">{{ col.replace('_', ' ').title() }}</th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in interview_ratings %}
+            <tr>
+                {% for item in row %}
+                <td>{{ item }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+   <!-- Visual Feedback THIRD -->
+<h2>Visual Feedback</h2>
+<div class="export-btn-container">
+    <a href="{{ url_for('dashboard.export_visual_feedback') }}" class="btn btn-outline-primary btn-sm">Export Visual Feedback to Excel</a>
+</div>
+<div class="visual-feedback-wrapper table-responsive mb-4">
+    <table id="visual-feedback-table" class="table table-striped mb-0">
+        <thead class="table-success">
+        <tr>
+            {% for col in visual_feedback_cols %}
+            <th class="fw-bold">{{ col.replace('_', ' ').title() }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in visual_feedback %}
+        <tr>
+            {% for item in row %}
+            <td>{{ item }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let interviewData = {{ interview_table_json | safe }};
+        const interviewTableCols = {{ interview_table_cols | tojson }};
+        if (!Array.isArray(interviewData)) interviewData = [];
+        // Map rows to objects so keys work for charts
+        interviewData = interviewData.map(row => {
+            const obj = {};
+            interviewTableCols.forEach((col, idx) => {
+                obj[col] = row[idx];
+            });
+            return obj;
+        });
+        console.log('interviewData for graphs:', interviewData);
+        const ratingsData = {{ interview_ratings_json | safe }};
+        const bluePalette = [
+            '#003f5c', '#2f4b7c', '#665191', '#a05195', '#d45087',
+            '#f95d6a', '#ff7c43', '#ffa600'
+        ];
+        const greenPalette = [
+            '#2a9d8f', '#264653', '#52b69a', '#4caf50', '#81c784',
+            '#a5d6a7', '#b7e4c7', '#c8facc'
+        ];
+        
+        function countByKey(data, key) {
+            return data.reduce((acc, obj) => {
+                const val = obj[key] || 'Unknown';
+                acc[val] = (acc[val] || 0) + 1;
+                return acc;
+            }, {});
+        }
+        
+        function pickColors(palette, count) {
+            return Array.from({length: count}, (_, i) => palette[i % palette.length]);
+        }
+        
+        // 1. Pie Chart - Interview Status Distribution
+        const statusCounts = countByKey(interviewData, "status");
+        const statusLabels = Object.keys(statusCounts);
+        const statusValues = Object.values(statusCounts);
+        const statusColors = pickColors(bluePalette, statusLabels.length);
+        
+        new Chart(document.getElementById('statusPieChart').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: statusLabels,
+                datasets: [{
+                    data: statusValues,
+                    backgroundColor: statusColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 2. Bar Chart - Difficulty Level Distribution
+        const difficultyCounts = countByKey(interviewData, "difficulty_level");
+        const difficultyLabels = Object.keys(difficultyCounts);
+        const difficultyValues = Object.values(difficultyCounts);
+        const difficultyColors = pickColors(greenPalette, difficultyLabels.length);
+        
+        new Chart(document.getElementById('difficultyBarChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: difficultyLabels,
+                datasets: [{
+                    label: 'Number of Students',
+                    data: difficultyValues,
+                    backgroundColor: difficultyColors,
+                    borderColor: difficultyColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.parsed.y} students`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Students'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Difficulty Level'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 3. Column Chart - Top 3 Centers by Student Count
+        const centerCounts = countByKey(interviewData, "center");
+        // Sort centers by count and take top 3
+        const sortedCenters = Object.entries(centerCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+        const topCenterLabels = sortedCenters.map(item => item[0]);
+        const topCenterValues = sortedCenters.map(item => item[1]);
+        const topCenterColors = pickColors(bluePalette, topCenterLabels.length);
+        
+        new Chart(document.getElementById('topCentersChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: topCenterLabels,
+                datasets: [{
+                    label: 'Number of Students',
+                    data: topCenterValues,
+                    backgroundColor: topCenterColors,
+                    borderColor: topCenterColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.parsed.y} students`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Students'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Center'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 4. Line Chart - Daily Interview Count
+        // Group interviews by date
+        const dateCounts = interviewData.reduce((acc, obj) => {
+            if (obj.interview_date) {
+                const date = obj.interview_date.split('T')[0]; // Extract just the date part
+                acc[date] = (acc[date] || 0) + 1;
+            }
+            return acc;
+        }, {});
+        
+        // Sort dates chronologically
+        const sortedDates = Object.keys(dateCounts).sort();
+        const interviewDates = sortedDates;
+        const interviewCounts = sortedDates.map(date => dateCounts[date]);
+        
+        new Chart(document.getElementById('dailyInterviewsChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: interviewDates,
+                datasets: [{
+                    label: 'Number of Interviews',
+                    data: interviewCounts,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.parsed.y} interviews`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Interviews'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Fallback: If interviewData is empty, show a message in each chart container
+        if (interviewData.length === 0) {
+            const containers = [
+                'statusPieChart',
+                'difficultyBarChart',
+                'topCentersChart',
+                'dailyInterviewsChart'
+            ];
+            containers.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    const msg = document.createElement('div');
+                    msg.style.textAlign = 'center';
+                    msg.style.padding = '40px 0';
+                    msg.style.color = '#888';
+                    msg.textContent = 'No interview data available for graphs.';
+                    el.parentNode.replaceChild(msg, el);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

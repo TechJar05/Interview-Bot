@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Performance Reports{% endblock %}
+{% block content %}
+<style>
+    th {
+        background: #b31e35 !important;
+        color: #fff !important;
+    }
+</style>
+<div class="container">
+    <h2>Performance Reports</h2>
+    <table class="table table-striped table-bordered">
+
+        <thead>
+            <tr>
+                {% for col in cols if col|lower != 'report' and col|lower != 'id' %}
+                <th>{{ col.replace('_', ' ').title() }}</th>
+                {% endfor %}
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in reports %}
+            <tr>
+                {% for col in cols if col|lower != 'report' and col|lower != 'id' %}
+                <td>{{ row[cols.index(col)] }}</td>
+                {% endfor %}
+                <td>
+                    {% set report_value = row[-1] %}
+                    {% if report_value %}
+                        <button class="btn btn-primary btn-sm view-report-btn" data-report-id="{{ row[0] }}">View</button>
+                        <a href="{{ url_for('dashboard.download_performance_report', report_id=row[0]) }}" class="btn btn-success btn-sm">Download</a>
+                    {% else %}
+                        <button class="btn btn-primary btn-sm" disabled>View</button>
+                        <button class="btn btn-success btn-sm" disabled>Download</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const buttons = document.querySelectorAll(".view-report-btn");
+        buttons.forEach(btn => {
+            btn.addEventListener("click", function () {
+                const reportId = this.getAttribute("data-report-id");
+                if (reportId) {
+                    window.location.href = `/performance/view/${reportId}`;
+                }
+            });
+        });
+    });
+</script>
+
+
+
+{% endblock %} 
+
+
