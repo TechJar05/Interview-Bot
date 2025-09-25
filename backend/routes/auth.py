@@ -10,46 +10,78 @@ import smtplib
 from email.mime.text import MIMEText
 from config import Config
 
+from urllib.parse import urlparse, urljoin
+
+
+
+
 logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
+
+
+def is_safe_url(target):
+    ref = urlparse(request.host_url)
+    test = urlparse(urljoin(request.host_url, target or ""))
+    return (test.scheme in ("http", "https")) and (ref.netloc == test.netloc)
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 @auth_bp.route("/", methods=["GET", "POST"])
 def login():
     logger.debug(f"Login route accessed with method: {request.method}")
+
+    # Pull ?next=... on GET (for template) OR on POST (from form)
+    next_url = request.args.get("next") if request.method == "GET" else (request.form.get("next") or request.args.get("next"))
+
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
         logger.debug(f"Login attempt for username: {username}")
-        # Admin static login
+
+        # --- Admin static login ---
         if username == "admin" and password == "admin123":
             logger.debug("Admin login successful")
             session["user"] = username
-            session["role"] = "recruiter"
-            return redirect("/recruiter_home")
-        else:
-            try:
-                conn = get_snowflake_connection()
-                if not conn:
-                    raise Exception("Could not connect to Snowflake")
-                cs = conn.cursor()
-                logger.debug(f"Checking credentials for user: {username}")
-                cs.execute("SELECT PASSWORD FROM REGISTER WHERE EMAIL_ID=%s;", (username,))
-                row = cs.fetchone()
-                cs.close()
-                conn.close()
-                if row and check_password_hash(row[0], password):
-                    logger.debug("User login successful")
-                    session["user"] = username  # Use email as roll_no
-                    session["role"] = "student"
-                    return redirect("/dashboard")
-                else:
-                    logger.warning("Invalid credentials")
-                    return render_template("login.html", error="Invalid credentials")
-            except Exception as e:
-                logger.error(f"Login error: {e}")
-                return render_template("login.html", error="Error during login")
-    return render_template("login.html")
+            session["role"] = "recruiter"     # adjust if you have a separate 'admin' role
+            session.permanent = False
+
+            # Honor 'next' if it is safe (local to same host)
+            if next_url and is_safe_url(next_url):
+                return redirect(next_url)
+            return redirect(url_for("dashboard.recruiter_home"))  # or your admin landing
+
+        # --- Student / normal login via Snowflake ---
+        try:
+            conn = get_snowflake_connection()
+            if not conn:
+                raise Exception("Could not connect to Snowflake")
+
+            cs = conn.cursor()
+            logger.debug(f"Checking credentials for user: {username}")
+            cs.execute("SELECT PASSWORD FROM REGISTER WHERE EMAIL_ID=%s;", (username,))
+            row = cs.fetchone()
+            cs.close()
+            conn.close()
+
+            if row and check_password_hash(row[0], password):
+                logger.debug("User login successful")
+                session["user"] = username     # this matches guards: if 'user' not in session: ...
+                session["role"] = "student"    # set role as needed
+                session.permanent = False
+
+                if next_url and is_safe_url(next_url):
+                    return redirect(next_url)
+                return redirect(url_for("dashboard.dashboard"))   # student landing
+            else:
+                logger.warning("Invalid credentials")
+                # keep 'next' so the form retains it
+                return render_template("login.html", error="Invalid credentials", next=next_url or "")
+        except Exception as e:
+            logger.error(f"Login error: {e}")
+            return render_template("login.html", error="Error during login", next=next_url or "")
+
+    # GET: render login, pass next so template can keep it
+    return render_template("login.html", next=next_url or "")
+
 
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():

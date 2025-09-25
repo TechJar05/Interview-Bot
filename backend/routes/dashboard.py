@@ -82,14 +82,22 @@ def dashboard():
 @dash_bp.route("/recruiter_home")
 def recruiter_home():
     logger.debug("Recruiter home route accessed")
+    
+    # Check if user is logged in and their role is 'recruiter'
     if "user" not in session or session.get("role") != "recruiter":
         logger.warning("Unauthorized access to recruiter home")
-        return redirect(url_for('auth.login', next=request.path))
+        
+        # If not logged in, redirect to login and pass the next URL (to redirect after login)
+        return redirect(url_for('auth.login', next=request.path))  # <-- Pass next=request.path to redirect after login
+    
     try:
+        # Get connection to Snowflake
         conn = get_snowflake_connection()
         if not conn:
             raise Exception("Could not connect to Snowflake")
         cs = conn.cursor()
+        
+        # Fetch interview ratings
         cs.execute("""
             SELECT roll_no, technical_rating, communication_rating, problem_solving_rating,
                    time_management_rating, total_rating, interview_ts
@@ -111,6 +119,8 @@ def recruiter_home():
             }
             for row in ratings_rows
         ]
+        
+        # Fetch interview table details
         cs.execute("""
             SELECT student_name, roll_no, batch_no, center, course, evaluation_date, difficulty_level, interview_ts, jd_id, status
             FROM interview
@@ -119,11 +129,12 @@ def recruiter_home():
         """)
         interview_table_rows = cs.fetchall()
         interview_table_cols = [desc[0].lower() for desc in cs.description]
-        # Prepare interview_table_json for JS graphs
         interview_table_json = [
             {col: row[i] for i, col in enumerate(interview_table_cols)}
             for row in interview_table_rows
         ]
+        
+        # Fetch visual feedback details
         cs.execute("""
             SELECT roll_no, professional_appearance, body_language, environment, 
                    distractions, interview_ts
@@ -133,11 +144,15 @@ def recruiter_home():
         """)
         visual_feedback_rows = cs.fetchall()
         visual_feedback_cols = [desc[0].lower() for desc in cs.description]
+        
         cs.close()
         conn.close()
+        
+        # Serialize interview data
         interview_table_serialized = [serialize_row(row) for row in interview_table_rows]
         interview_ratings_serialized = [serialize_row(row) for row in ratings_rows]
-        # Pass as list of lists for JS mapping
+        
+        # Pass data to template for rendering
         return render_template(
             "recruiter_home.html",
             user_name=session.get("user"),
@@ -146,11 +161,12 @@ def recruiter_home():
             interview_ratings_cols=ratings_cols,
             interview_table=interview_table_rows,
             interview_table_cols=interview_table_cols,
-            interview_table_json=interview_table_serialized,  # <-- FIXED: pass as list of lists
+            interview_table_json=interview_table_serialized,  # <-- pass serialized data
             visual_feedback=visual_feedback_rows,
             visual_feedback_cols=visual_feedback_cols,
             interview_ratings_json=interview_ratings_json
         )
+    
     except Exception as e:
         logger.error(f"Error in recruiter_home: {str(e)}", exc_info=True)
         return f"Error loading data: {e}"
