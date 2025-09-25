@@ -43,10 +43,4 @@ def not_found_error(error):
 
 if __name__ == '__main__':
     print('\nApp running! Open http://localhost:5000/ in your browser.\n')
-    app.run(
-        host=Config.HOST,
-        port=Config.PORT,
-        debug=True,
-        use_reloader=Config.USE_RELOADER,
-        threaded=Config.THREADED
-    )
+    app.run(host="0.0.0.0", port=5000, debug=True)

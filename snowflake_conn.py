@@ -1,9 +1,9 @@
 import snowflake.connector
 import logging
 
-SNOW_USER = "Aishwarya1212"
-SNOW_PWD = "Aishwaryatechjar@2025"
-SNOW_ACCOUNT = "XIMRCYJ-PZ75081"  # Corrected: no region suffix here
+SNOW_USER = "techjar"
+SNOW_PWD = "Techjar@123456"
+SNOW_ACCOUNT = "WFDJZDH-KO04672"  # Corrected: no region suffix here
 SNOW_REGION = "us-west-2"          # Region separately
 SNOW_WAREHOUSE = "COMPUTE_WH"
 SNOW_DATABASE = "JETKINGINTERVIEW"

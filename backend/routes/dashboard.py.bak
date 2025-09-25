@@ -84,7 +84,7 @@ def recruiter_home():
     logger.debug("Recruiter home route accessed")
     if "user" not in session or session.get("role") != "recruiter":
         logger.warning("Unauthorized access to recruiter home")
-        return redirect(url_for('auth.login', next=request.path))
+        return redirect(url_for("login"))
     try:
         conn = get_snowflake_connection()
         if not conn:
@@ -160,7 +160,7 @@ def export_interview_ratings():
     logger.debug("Export interview ratings endpoint called")
     if "user" not in session or session.get("role") != "recruiter":
         logger.warning("Unauthorized export attempt")
-        return redirect(url_for('auth.login', next=request.path))
+        return redirect(url_for("login"))
     try:
         conn = get_snowflake_connection()
         if not conn:
@@ -195,7 +195,7 @@ def export_student_info():
     logger.debug("Export student info endpoint called")
     if "user" not in session or session.get("role") != "recruiter":
         logger.warning("Unauthorized export attempt")
-        return redirect(url_for('auth.login', next=request.path))
+        return redirect(url_for("login"))
     try:
         conn = get_snowflake_connection()
         if not conn:
@@ -229,7 +229,7 @@ def export_visual_feedback():
     logger.debug("Export visual feedback endpoint called")
     if "user" not in session or session.get("role") != "recruiter":
         logger.warning("Unauthorized export attempt")
-        return redirect(url_for('auth.login', next=request.path))
+        return redirect(url_for("login"))
     try:
         conn = get_snowflake_connection()
         if not conn:
