@@ -229,11 +229,11 @@ document.addEventListener("DOMContentLoaded", function () {
 <a href="{{ url_for('dashboard.export_visual_feedback') }}" class="btn btn-outline-primary btn-sm">Export visual feedback to Excel</a>
 {% endif %}
 
-{% if session['role'] == 'student' %}
+{% comment %} {% if session['role'] == 'student' %}
 <div id="interviewNotification" style="display:none;" class="alert alert-success mt-3">
     <strong>Interview Scheduled!</strong> A recruiter has scheduled an interview for you.
     <a href="/interview" class="btn btn-success btn-sm ms-2">Start Interview</a>
-</div>
+</div> {% endcomment %}
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     fetch("/student_interview_notification")
