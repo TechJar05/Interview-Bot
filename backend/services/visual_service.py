@@ -18,9 +18,10 @@ _visual_cache = {}
 # Track previous observations per candidate to avoid repetition
 _candidate_history = {}
 
-def _get_visual_cache_key(frame_base64, candidate_context=""):
-    """Generate a cache key for visual analysis including candidate context"""
-    content = f"{frame_base64[:100]}_{candidate_context}"
+def _get_visual_cache_key(frame_base64, candidate_context="", timestamp=""):
+    """Generate a more unique cache key for visual analysis"""
+    # Use more of the base64 string and include timestamp for uniqueness
+    content = f"{frame_base64[:200]}_{candidate_context}_{timestamp}"
     return hashlib.md5(content.encode()).hexdigest()
 
 def process_frame_for_gpt4v(frame):
@@ -29,132 +30,56 @@ def process_frame_for_gpt4v(frame):
         if height > MAX_FRAME_SIZE or width > MAX_FRAME_SIZE:
             scale = MAX_FRAME_SIZE / max(height, width)
             frame = cv2.resize(frame, (int(width * scale), int(height * scale)))
-        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 75])  # Slightly higher quality
+        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         base64_str = base64.b64encode(buffer).decode('utf-8')
         return base64_str
     except Exception as e:
         logger.error(f"Error processing frame for GPT-4V: {str(e)}")
         return ""
 
-def _analyze_frame_locally(frame_base64: str, candidate_context="", candidate_name="Unknown") -> dict:
-    """Enhanced local frame analysis with candidate-specific observations"""
+def extract_json_from_response(response_content):
+    """Extract JSON from various response formats"""
+    if not response_content or response_content.strip() == "":
+        return None
+    
+    response_content = response_content.strip()
+    
+    # Method 1: Try direct JSON parsing
     try:
-        img_bytes = base64.b64decode(frame_base64)
-        np_arr = np.frombuffer(img_bytes, dtype=np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        if img is None:
-            raise ValueError("Failed to decode image")
-        
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        h, w = img.shape[:2]
-        
-        # Enhanced brightness analysis
-        mean_brightness = float(np.mean(gray))
-        brightness_std = float(np.std(gray))
-        
-        # Enhanced edge detection for background complexity
-        edges = cv2.Canny(gray, 100, 200)
-        edge_density = float(np.count_nonzero(edges)) / float(edges.size)
-        
-        # Face region analysis (upper third of frame)
-        face_region = gray[:h//3, :]
-        face_brightness = float(np.mean(face_region))
-        
-        # Background analysis (excluding center region)
-        mask = np.ones_like(gray, dtype=bool)
-        center_h, center_w = h//3, w//3
-        mask[h//2-center_h//2:h//2+center_h//2, w//2-center_w//2:w//2+center_w//2] = False
-        bg_region = gray[mask]
-        bg_complexity = float(np.std(bg_region)) if len(bg_region) > 0 else 0
-        
-        # Color analysis for more specific descriptions
-        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        dominant_hue = float(np.median(hsv[:,:,0]))
-        saturation = float(np.mean(hsv[:,:,1]))
-        
-        # Generate candidate-specific descriptions based on measurements
-        current_time = datetime.now()
-        time_context = f"at {current_time.strftime('%H:%M')}"
-        
-        # Professional appearance with specific details and candidate context
-        if face_brightness >= 140 and brightness_std < 40:
-            if saturation > 80:  # Colorful clothing
-                appearance_desc = f"{candidate_name} wearing vibrant attire with excellent facial lighting {time_context}"
-            else:
-                appearance_desc = f"{candidate_name} in neutral-toned clothing, well-lit professional appearance {time_context}"
-        elif face_brightness >= 120:
-            appearance_desc = f"{candidate_name} displaying professional attire with adequate lighting conditions {time_context}"
-        elif face_brightness >= 100:
-            appearance_desc = f"{candidate_name} maintaining neat presentation despite moderate lighting {time_context}"
-        else:
-            appearance_desc = f"{candidate_name}'s appearance assessment limited by dim lighting conditions {time_context}"
-        
-        # Body language with specific posture indicators and candidate name
-        center_region = gray[h//3:2*h//3, w//3:2*w//3]
-        center_edges = cv2.Canny(center_region, 50, 150)
-        posture_metric = float(np.count_nonzero(center_edges)) / float(center_edges.size)
-        
-        if posture_metric <= 0.08:
-            posture_desc = f"{candidate_name} maintaining steady, upright seating position throughout {time_context}"
-        elif posture_metric <= 0.15:
-            posture_desc = f"{candidate_name} exhibiting stable posture with occasional minor adjustments {time_context}"
-        elif posture_metric <= 0.25:
-            posture_desc = f"{candidate_name} showing active engagement through moderate body movements {time_context}"
-        else:
-            posture_desc = f"{candidate_name} demonstrating dynamic posture with frequent positional changes {time_context}"
-        
-        # Environment with candidate-specific context
-        if bg_complexity <= 20 and mean_brightness >= 130:
-            env_desc = f"{candidate_name} positioned in clean, well-illuminated professional setting {time_context}"
-        elif bg_complexity <= 35:
-            env_desc = f"{candidate_name} in organized environment with consistent ambient lighting {time_context}"
-        elif bg_complexity <= 50:
-            env_desc = f"{candidate_name} situated in moderately detailed background with acceptable lighting {time_context}"
-        else:
-            env_desc = f"{candidate_name} in complex environmental setup with varied lighting elements {time_context}"
-        
-        # Distractions with specific indicators
-        if edge_density <= 0.1 and bg_complexity <= 25:
-            distraction_desc = f"Minimal background distractions observed in {candidate_name}'s frame {time_context}"
-        elif edge_density <= 0.18:
-            distraction_desc = f"Some background elements present behind {candidate_name} but non-disruptive {time_context}"
-        else:
-            distraction_desc = f"Multiple visual elements creating complexity in {candidate_name}'s background {time_context}"
-        
-        # Facial expression analysis with candidate specificity
-        face_edges = cv2.Canny(face_region, 30, 100)
-        expression_metric = float(np.count_nonzero(face_edges)) / float(face_edges.size)
-        
-        if expression_metric <= 0.12:
-            expression_desc = f"{candidate_name} displaying calm, composed facial expression {time_context}"
-        elif expression_metric <= 0.20:
-            expression_desc = f"{candidate_name} showing engaged expression with moderate facial activity {time_context}"
-        else:
-            expression_desc = f"{candidate_name} exhibiting animated facial expressions during interaction {time_context}"
-        
-        return {
-            "professional_appearance": appearance_desc,
-            "body_language": posture_desc,
-            "environment": env_desc,
-            "distractions": distraction_desc,
-            "facial_expressions": expression_desc
-        }
-        
-    except Exception as e:
-        logger.error(f"Error in local frame analysis: {str(e)}")
-        timestamp = datetime.now().strftime('%H:%M')
-        candidate_name = candidate_name or "Candidate"
-        return {
-            "professional_appearance": f"{candidate_name}'s appearance analysis unavailable due to processing issue at {timestamp}",
-            "body_language": f"{candidate_name}'s posture assessment limited by analysis error at {timestamp}",
-            "environment": f"{candidate_name}'s environment details unclear due to technical error at {timestamp}",
-            "distractions": f"Distraction evaluation for {candidate_name} inconclusive at {timestamp}",
-            "facial_expressions": f"{candidate_name}'s expression analysis unavailable at {timestamp}"
-        }
+        return json.loads(response_content)
+    except json.JSONDecodeError:
+        pass
+    
+    # Method 2: Extract from markdown code blocks
+    import re
+    json_patterns = [
+        r'```json\s*([\s\S]*?)\s*```',
+        r'```\s*([\s\S]*?)\s*```',
+        r'`([^`]+)`'
+    ]
+    
+    for pattern in json_patterns:
+        match = re.search(pattern, response_content)
+        if match:
+            try:
+                json_content = match.group(1).strip()
+                return json.loads(json_content)
+            except json.JSONDecodeError:
+                continue
+    
+    # Method 3: Find JSON object in text
+    json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_content)
+    if json_match:
+        try:
+            return json.loads(json_match.group(0))
+        except json.JSONDecodeError:
+            pass
+    
+    return None
 
 @timing_decorator("Visual Analysis")
 def analyze_visual_response(frame_base64, conversation_context, candidate_info=None):
-    """Enhanced visual analysis with candidate-specific context and uniqueness"""
+    """Enhanced visual analysis with better uniqueness and error handling"""
     
     # Extract candidate context for unique analysis
     candidate_context = ""
@@ -166,10 +91,11 @@ def analyze_visual_response(frame_base64, conversation_context, candidate_info=N
         candidate_id = candidate_info.get('roll_no', candidate_info.get('email', 'unknown'))
         candidate_context = f"{candidate_name}_{candidate_id}"
     
-    # Generate cache key with candidate context
-    cache_key = _get_visual_cache_key(frame_base64, candidate_context)
+    # Generate more unique cache key with timestamp
+    current_timestamp = datetime.now().strftime("%H%M%S")
+    cache_key = _get_visual_cache_key(frame_base64, candidate_context, current_timestamp)
     
-    # Check cache first
+    # Check cache first (but with shorter expiry for uniqueness)
     if cache_key in _visual_cache:
         logger.debug(f"Using cached visual analysis result for {candidate_name}")
         return _visual_cache[cache_key]
@@ -183,66 +109,62 @@ def analyze_visual_response(frame_base64, conversation_context, candidate_info=N
             "distractions": f"No visual data available for {candidate_name} distraction assessment",
             "facial_expressions": f"No visual data available for {candidate_name} expression analysis"
         }
-        _visual_cache[cache_key] = result
-        return result
+        return result  # Don't cache empty results
     
     try:
-        # Check previous observations to avoid repetition
+        # Get previous observations to ensure uniqueness
         previous_observations = _candidate_history.get(candidate_context, [])
         avoided_phrases = []
         
         if previous_observations:
-            for prev in previous_observations[-2:]:  # Last 2 observations
+            for prev in previous_observations[-2:]:
                 for category, observation in prev.items():
                     if len(observation) > 20:
-                        # Extract key phrases to avoid
-                        words = observation.split()
-                        key_phrases = [word for word in words[2:6] if len(word) > 4]  # Skip first 2 words, take meaningful ones
+                        words = observation.lower().split()
+                        key_phrases = [word for word in words if len(word) > 5 and 
+                                     word not in ['professional', 'displaying', 'maintaining', 'showing']][:5]
                         avoided_phrases.extend(key_phrases)
         
-        # Create enhanced prompt with candidate specificity and uniqueness requirements
-        current_time = datetime.now().strftime("%H:%M on %B %d")
+        # Create enhanced prompt with better instructions
+        current_time = datetime.now().strftime("%H:%M")
+        
+        # Fix the set slicing issue
+        unique_avoided_phrases = list(set(avoided_phrases))[:10] if avoided_phrases else []
         
         enhanced_prompt = f"""
-        Analyze this interview video frame for candidate {candidate_name} (ID: {candidate_id}) captured at {current_time}.
-
-        CRITICAL REQUIREMENTS FOR UNIQUENESS:
-        - Provide SPECIFIC, DETAILED observations unique to THIS candidate and moment
-        - Use concrete visual details: colors, textures, positioning, lighting characteristics
-        - Include specific measurements or spatial relationships when possible
-        - Focus on distinguishing characteristics that make this candidate different
-        - Each observation must be 20-30 words with concrete, observable details
+        You are analyzing a video frame from an interview with {candidate_name} (ID: {candidate_id}) at {current_time}.
         
-        AVOID these generic terms: professional, neat, stable, clean, good, appears, seems, normal, typical
+        CRITICAL INSTRUCTIONS:
+        1. Provide SPECIFIC, CONCRETE observations unique to THIS moment
+        2. Use detailed visual descriptions: exact colors, patterns, textures, positioning
+        3. Mention specific objects, clothing details, facial features, room elements
+        4. Each description must be 25-40 words with specific visual evidence
+        5. Be factual and avoid generic terms like "professional", "neat", "good"
+        
+        AVOID these recently used phrases: {', '.join(unique_avoided_phrases) if unique_avoided_phrases else 'none'}
+        
+        Analyze these aspects with SPECIFIC details:
+        
+        1. PROFESSIONAL APPEARANCE: Exact clothing (colors, patterns, style), accessories, grooming details
+        2. BODY LANGUAGE: Precise posture (shoulder angle, hand position, head tilt, sitting/standing)  
+        3. FACIAL EXPRESSIONS: Specific facial details (eye contact, smile, eyebrow position, overall expression)
+        4. ENVIRONMENT: Background objects, wall colors, lighting source/direction, room setup, visible items
+        5. DISTRACTIONS: Movement, objects, sounds, technical issues, background activity
+        
+        Return ONLY valid JSON with these exact keys:
+        {{"professional_appearance": "specific clothing and appearance details with colors/patterns",
+          "body_language": "exact posture description with spatial positioning",
+          "facial_expressions": "detailed facial characteristics and expression specifics", 
+          "environment": "specific background elements, colors, objects, and lighting details",
+          "distractions": "concrete environmental factors and technical observations"}}
+        
+        Focus on what makes THIS candidate unique in THIS moment.
         """
         
-        # Add phrase avoidance if we have previous observations
-        if avoided_phrases:
-            unique_phrases = list(set(avoided_phrases))[:8]  # Remove duplicates, limit to 8
-            enhanced_prompt += f"\nAVOID these previously used phrases: {', '.join(unique_phrases)}"
-        
-        enhanced_prompt += f"""
-        
-        Analyze these specific aspects:
-        
-        1. PROFESSIONAL APPEARANCE: Exact clothing details (colors, styles, textures), grooming specifics, accessories, unique visual characteristics
-        2. BODY LANGUAGE: Precise posture description (shoulder position, hand placement, head angle, torso alignment), movement patterns
-        3. FACIAL EXPRESSIONS: Specific facial characteristics (eye direction, eyebrow position, mouth expression, overall engagement level)
-        4. ENVIRONMENT: Detailed background elements (objects, colors, lighting direction and quality, room characteristics, camera setup)
-        5. DISTRACTIONS: Specific environmental elements, movements, technical issues, visual complexity factors
-        
-        Return JSON with exactly these keys:
-        {{"professional_appearance": "specific clothing and grooming details with colors and textures", 
-          "body_language": "exact posture and positioning with spatial descriptions",
-          "facial_expressions": "specific facial characteristics and expression details",
-          "environment": "detailed background description with lighting and objects", 
-          "distractions": "specific environmental elements and technical observations"}}
-        
-        Make each description unique to {candidate_name} and include concrete visual evidence.
-        """
+        logger.info(f"Sending visual analysis request to OpenAI for {candidate_name}")
         
         response = openai.ChatCompletion.create(
-            model="gpt-4o",  # Use stronger model for better analysis
+            model="gpt-4o",
             messages=[
                 {
                     "role": "user",
@@ -252,64 +174,82 @@ def analyze_visual_response(frame_base64, conversation_context, candidate_info=N
                             "type": "image_url",
                             "image_url": {
                                 "url": f"data:image/jpeg;base64,{frame_base64}",
-                                "detail": "high"  # Request high detail analysis
+                                "detail": "high"
                             }
                         }
                     ]
                 }
             ],
-            temperature=0.8,  # Higher temperature for more variety
-            max_tokens=400,   # Increased for more detailed responses
-            timeout=25
+            temperature=0.9,  # Higher temperature for more variety
+            max_tokens=500,
+            timeout=30
         )
         
-        logger.debug(f"Raw OpenAI visual feedback response for {candidate_name}: {response.choices[0].message.content}")
+        response_content = response.choices[0].message.content
+        logger.info(f"OpenAI visual response for {candidate_name}: {response_content[:200]}...")
         
-        try:
-            feedback = json.loads(response.choices[0].message.content)
+        # Extract JSON from response
+        feedback = extract_json_from_response(response_content)
+        
+        if not feedback:
+            logger.error(f"Failed to extract JSON from OpenAI response for {candidate_name}")
+            raise ValueError("Invalid JSON response from OpenAI")
+        
+        # Validate response quality
+        required_keys = ['professional_appearance', 'body_language', 'facial_expressions', 'environment', 'distractions']
+        if not all(key in feedback for key in required_keys):
+            logger.error(f"Missing required keys in response for {candidate_name}: {list(feedback.keys())}")
+            raise ValueError("Incomplete response from OpenAI")
+        
+        # Check for generic responses and minimum length
+        for key, value in feedback.items():
+            if len(value) < 20:
+                logger.warning(f"Response too short for {key}: '{value}'")
+                raise ValueError(f"Response too generic for {key}")
             
-            # Validate and enhance feedback quality
-            for key, value in feedback.items():
-                # Ensure minimum quality and length
-                if len(value) < 20 or any(generic in value.lower() for generic in 
-                                        ['professional', 'neat', 'stable', 'clean', 'good', 'appears', 'seems']):
-                    # Use local analysis as backup with candidate context
-                    local_analysis = _analyze_frame_locally(frame_base64, candidate_context, candidate_name)
-                    feedback[key] = local_analysis.get(key, f"Specific {key.replace('_', ' ')} observation needed for {candidate_name}")
+            # Check for overly generic terms
+            generic_terms = ['professional', 'neat', 'stable', 'clean', 'good', 'normal', 'typical']
+            if sum(1 for term in generic_terms if term in value.lower()) > 2:
+                logger.warning(f"Response too generic for {key}: '{value}'")
+                raise ValueError(f"Response too generic for {key}")
+        
+        # Store in candidate history for future uniqueness
+        if candidate_context:
+            if candidate_context not in _candidate_history:
+                _candidate_history[candidate_context] = []
+            _candidate_history[candidate_context].append(feedback)
             
-            # Store in candidate history for future uniqueness
-            if candidate_context:
-                if candidate_context not in _candidate_history:
-                    _candidate_history[candidate_context] = []
-                _candidate_history[candidate_context].append(feedback)
-                
-                # Keep only last 3 observations per candidate
-                if len(_candidate_history[candidate_context]) > 3:
-                    _candidate_history[candidate_context] = _candidate_history[candidate_context][-3:]
-            
-            # Cache the result
-            _visual_cache[cache_key] = feedback
-            
-            # Limit cache size to prevent memory issues
-            if len(_visual_cache) > 300:
-                oldest_keys = list(_visual_cache.keys())[:50]
-                for key in oldest_keys:
-                    del _visual_cache[key]
-            
-            logger.info(f"Generated unique visual feedback for {candidate_name}: {len(str(feedback))} chars")
-            return feedback
-            
-        except json.JSONDecodeError:
-            logger.warning(f"OpenAI response not valid JSON for {candidate_name}, using local analysis")
-            result = _analyze_frame_locally(frame_base64, candidate_context, candidate_name)
-            _visual_cache[cache_key] = result
-            return result
-            
+            # Keep only last 5 observations per candidate
+            if len(_candidate_history[candidate_context]) > 5:
+                _candidate_history[candidate_context] = _candidate_history[candidate_context][-5:]
+        
+        # Cache the result (with limited cache size)
+        _visual_cache[cache_key] = feedback
+        
+        # Limit cache size to prevent memory issues
+        if len(_visual_cache) > 100:  # Reduced cache size for more uniqueness
+            oldest_keys = list(_visual_cache.keys())[:20]
+            for key in oldest_keys:
+                del _visual_cache[key]
+        
+        logger.info(f"Successfully generated unique visual feedback for {candidate_name}")
+        return feedback
+        
     except Exception as e:
-        logger.error(f"Error in enhanced visual analysis for {candidate_name}: {str(e)}", exc_info=True)
-        result = _analyze_frame_locally(frame_base64, candidate_context, candidate_name)
-        _visual_cache[cache_key] = result
-        return result
+        logger.error(f"Error in visual analysis for {candidate_name}: {str(e)}", exc_info=True)
+        
+        # Return more specific error-based response instead of generic local analysis
+        current_time = datetime.now().strftime("%H:%M")
+        error_result = {
+            "professional_appearance": f"Visual analysis temporarily unavailable for {candidate_name} at {current_time} - technical processing issue",
+            "body_language": f"Posture assessment for {candidate_name} limited at {current_time} - analysis system temporarily unavailable", 
+            "environment": f"Background analysis for {candidate_name} incomplete at {current_time} - processing difficulties encountered",
+            "distractions": f"Distraction evaluation for {candidate_name} inconclusive at {current_time} - technical analysis limitations",
+            "facial_expressions": f"Expression analysis for {candidate_name} unavailable at {current_time} - visual processing temporarily impaired"
+        }
+        
+        # Don't cache error results to allow retry
+        return error_result
 
 def get_candidate_visual_summary(candidate_info):
     """Get comprehensive visual summary for a candidate across all observations"""
@@ -327,60 +267,39 @@ def get_candidate_visual_summary(candidate_info):
     if not observations:
         return None
     
-    # Aggregate observations by category
+    # Get the most recent and detailed observations
     summary = {}
     for category in ['professional_appearance', 'body_language', 'environment', 'distractions', 'facial_expressions']:
         category_obs = []
         for obs in observations:
-            if category in obs and obs[category]:
+            if category in obs and obs[category] and len(obs[category]) > 20:
                 category_obs.append(obs[category])
         
         if category_obs:
-            # Find most comprehensive observation (longest with candidate name)
-            best_obs = max(category_obs, key=lambda x: len(x) if candidate_name in x else len(x) * 0.5)
-            summary[category] = best_obs
+            # Get most recent detailed observation
+            summary[category] = category_obs[-1]  # Most recent
         else:
-            summary[category] = f"No specific {category.replace('_', ' ')} observations recorded for {candidate_name}"
+            summary[category] = f"Insufficient {category.replace('_', ' ')} observations recorded for {candidate_name}"
     
     return summary
 
-def get_candidate_observation_count(candidate_info):
-    """Get the number of visual observations for a candidate"""
-    if not candidate_info:
-        return 0
-        
-    candidate_name = candidate_info.get('name', 'Unknown')
-    candidate_id = candidate_info.get('roll_no', candidate_info.get('email', 'unknown'))
-    candidate_context = f"{candidate_name}_{candidate_id}"
-    
-    return len(_candidate_history.get(candidate_context, []))
-
-def clear_candidate_history(candidate_info=None):
-    """Clear visual history for a specific candidate or all candidates"""
+def clear_candidate_cache(candidate_info=None):
+    """Clear cache for specific candidate or all candidates"""
     if candidate_info:
         candidate_name = candidate_info.get('name', 'Unknown')
         candidate_id = candidate_info.get('roll_no', candidate_info.get('email', 'unknown'))
         candidate_context = f"{candidate_name}_{candidate_id}"
+        
+        # Clear history
         _candidate_history.pop(candidate_context, None)
-        logger.info(f"Cleared visual history for {candidate_name}")
+        
+        # Clear related cache entries
+        keys_to_remove = [k for k in _visual_cache.keys() if candidate_context in k]
+        for key in keys_to_remove:
+            del _visual_cache[key]
+            
+        logger.info(f"Cleared visual cache for {candidate_name}")
     else:
         _candidate_history.clear()
-        logger.info("Cleared visual history for all candidates")
-
-def get_all_candidate_contexts():
-    """Get list of all candidate contexts with observations"""
-    return list(_candidate_history.keys())
-
-def cleanup_old_observations(max_age_hours=24):
-    """Clean up old visual observations to manage memory"""
-    # This is a placeholder for future implementation if needed
-    # Could track timestamps and remove old entries
-    current_count = sum(len(obs) for obs in _candidate_history.values())
-    logger.info(f"Current visual observation count: {current_count} across {len(_candidate_history)} candidates")
-    
-    # If we have too many observations, keep only the most recent per candidate
-    if current_count > 1000:
-        for context in _candidate_history:
-            if len(_candidate_history[context]) > 2:
-                _candidate_history[context] = _candidate_history[context][-2:]
-        logger.info("Cleaned up old visual observations due to memory limits")
+        _visual_cache.clear()
+        logger.info("Cleared all visual caches")
