@@ -231,14 +231,127 @@ def generate_encouragement_prompt(conversation_history):
         logger.error(f"Error generating encouragement prompt: {str(e)}", exc_info=True)
         return "Please continue with your thought."
 
+def extract_json_from_response(response_content):
+    """
+    Robust JSON extraction that handles various response formats from OpenAI
+    """
+    if not response_content or response_content.strip() == "":
+        return None
+    
+    response_content = response_content.strip()
+    
+    # Method 1: Try direct JSON parsing
+    try:
+        return json.loads(response_content)
+    except json.JSONDecodeError:
+        pass
+    
+    # Method 2: Extract from markdown code blocks
+    json_patterns = [
+        r'```json\s*([\s\S]*?)\s*```',  # ```json...```
+        r'```\s*([\s\S]*?)\s*```',      # ```...```
+        r'`([^`]+)`'                     # Single backticks
+    ]
+    
+    for pattern in json_patterns:
+        match = re.search(pattern, response_content)
+        if match:
+            try:
+                json_content = match.group(1).strip()
+                return json.loads(json_content)
+            except json.JSONDecodeError:
+                continue
+    
+    # Method 3: Find JSON object in text
+    json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_content)
+    if json_match:
+        try:
+            return json.loads(json_match.group(0))
+        except json.JSONDecodeError:
+            pass
+    
+    # Method 4: Extract individual values using regex
+    try:
+        ratings = {}
+        patterns = {
+            'technical': r'"technical":\s*(\d+(?:\.\d+)?)',
+            'communication': r'"communication":\s*(\d+(?:\.\d+)?)',
+            'problem_solving': r'"problem_solving":\s*(\d+(?:\.\d+)?)',
+            'time_management': r'"time_management":\s*(\d+(?:\.\d+)?)',
+            'overall': r'"overall":\s*(\d+(?:\.\d+)?)'
+        }
+        
+        for key, pattern in patterns.items():
+            match = re.search(pattern, response_content)
+            if match:
+                ratings[key] = float(match.group(1))
+        
+        if len(ratings) == 5:  # All ratings found
+            return ratings
+            
+    except Exception:
+        pass
+    
+    return None
+
+def validate_and_normalize_ratings(ratings):
+    """
+    Validate and ensure ratings are on 1-10 scale
+    """
+    if not isinstance(ratings, dict):
+        return None
+    
+    required_keys = ['technical', 'communication', 'problem_solving', 'time_management', 'overall']
+    if not all(key in ratings for key in required_keys):
+        return None
+    
+    normalized_ratings = {}
+    for key, value in ratings.items():
+        try:
+            rating_value = float(value)
+            
+            # Validate and ensure ratings are on 1-10 scale
+            if rating_value < 1 or rating_value > 10:
+                if 0 <= rating_value <= 1:
+                    # Assume it's on a 0-1 scale, scale to 1-10
+                    rating_value = (rating_value * 9) + 1
+                elif 1 <= rating_value <= 5:
+                    # Assume it's on a 1-5 scale, scale to 1-10
+                    rating_value = (rating_value - 1) * (9/4) + 1
+                else:
+                    # Clamp to valid range
+                    rating_value = max(1, min(10, rating_value))
+                logger.warning(f"Rating {key} was {value}, adjusted to {rating_value}")
+            
+            normalized_ratings[key] = float(rating_value)
+            
+        except (ValueError, TypeError):
+            logger.error(f"Invalid rating value for {key}: {value}")
+            return None
+    
+    return normalized_ratings
+
 @timing_decorator("Response Evaluation")
 def evaluate_response(answer, question, difficulty_level, visual_feedback=None):
+    """
+    Evaluate interview response using OpenAI API with robust error handling
+    
+    Args:
+        answer (str): The candidate's response
+        question (str): The interview question
+        difficulty_level (str): Interview difficulty level
+        visual_feedback (dict, optional): Visual feedback data
+    
+    Returns:
+        dict: Rating scores for different categories (1-10 scale)
+    """
     # Check cache first
     cache_key = _get_cache_key(answer, question, difficulty_level)
     if cache_key in _evaluation_cache:
         logger.debug("Using cached evaluation result")
         return _evaluation_cache[cache_key]
     
+    # Handle very short responses
     if len(answer.strip()) < 20:
         result = {
             "technical": 4.0,
@@ -250,13 +363,25 @@ def evaluate_response(answer, question, difficulty_level, visual_feedback=None):
         _evaluation_cache[cache_key] = result
         return result
     
-    # Optimized prompt - shorter and more focused
+    # Prepare the evaluation prompt
     rating_prompt = f"""Rate this {difficulty_level} level interview response on a scale of 1-10 for each category:
-                        Q: "{question[:200]}"
-                        A: "{answer[:300]}"
-                        IMPORTANT: Use ONLY numbers from 1 to 10 (inclusive). Do not use any other scale.
-                        Return JSON: {{"technical": X, "communication": X, "problem_solving": X, "time_management": X, "overall": X}}
-                        Where X is a number between 1 and 10."""
+
+Question: "{question[:200]}{'...' if len(question) > 200 else ''}"
+Answer: "{answer[:500]}{'...' if len(answer) > 500 else ''}"
+
+Evaluate based on:
+- Technical: Accuracy, depth of knowledge, correctness
+- Communication: Clarity, articulation, structure
+- Problem Solving: Logic, creativity, approach
+- Time Management: Conciseness, relevance
+- Overall: Composite performance
+
+IMPORTANT: 
+- Use ONLY numbers from 1 to 10 (inclusive). Do not use any other scale.
+- Return ONLY plain JSON without any markdown formatting or code blocks.
+- Format exactly as: {{"technical": X, "communication": X, "problem_solving": X, "time_management": X, "overall": X}}
+- Where X is a number between 1 and 10.
+- DO NOT wrap in ```json``` blocks or any other formatting."""
     
     try:
         # Use faster model for evaluation
@@ -264,81 +389,91 @@ def evaluate_response(answer, question, difficulty_level, visual_feedback=None):
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": rating_prompt}],
             temperature=0.3,
-            max_tokens=100,  # Reduced from 200
-            timeout=10  # Add timeout
+            max_tokens=150,
+            timeout=15
         )
         
-        # Fixed: Added proper error handling for empty response
+        # Get response content
         response_content = response.choices[0].message.content
         
         if not response_content or response_content.strip() == "":
             logger.error("Empty response from OpenAI API")
-            # Return default fallback ratings
-            result = {
-                "technical": 6.0,
-                "communication": 6.0,
-                "problem_solving": 6.0,
-                "time_management": 6.0,
-                "overall": 6.0
-            }
-            _evaluation_cache[cache_key] = result
-            return result
+            raise ValueError("Empty response from OpenAI")
         
-        # Fixed: Added JSON parsing error handling
-        try:
-            ratings = json.loads(response_content)
-        except json.JSONDecodeError as json_error:
-            logger.error(f"Failed to parse JSON response: {json_error}")
-            logger.error(f"Raw response content: '{response_content}'")
-            # Return default fallback ratings
-            result = {
-                "technical": 6.0,
-                "communication": 6.0,
-                "problem_solving": 6.0,
-                "time_management": 6.0,
-                "overall": 6.0
-            }
-            _evaluation_cache[cache_key] = result
-            return result
+        logger.debug(f"Raw OpenAI response: '{response_content}'")
         
-        result = {k: float(v) for k, v in ratings.items()}
+        # Extract JSON using robust method
+        ratings = extract_json_from_response(response_content)
         
-        # Validate and ensure ratings are on 1-10 scale
-        for key, value in result.items():
-            if value < 1 or value > 10:
-                # If rating is out of range, scale it appropriately
-                if 1 <= value <= 5:
-                    # Assume it's on a 1-5 scale, scale to 1-10
-                    result[key] = value * 2
-                else:
-                    # Clamp to valid range
-                    result[key] = max(1, min(10, value))
-                logger.warning(f"Rating {key} was {value}, adjusted to {result[key]}")
+        if ratings is None:
+            logger.error(f"Could not extract JSON from response: '{response_content}'")
+            raise ValueError("Failed to extract ratings from response")
+        
+        # Validate and normalize ratings
+        normalized_ratings = validate_and_normalize_ratings(ratings)
+        
+        if normalized_ratings is None:
+            logger.error(f"Invalid ratings structure: {ratings}")
+            raise ValueError("Invalid ratings structure")
+        
+        result = normalized_ratings
         
         # Cache the result
         _evaluation_cache[cache_key] = result
         
         # Limit cache size to prevent memory issues
         if len(_evaluation_cache) > 1000:
-            # Remove oldest entries
+            # Remove oldest entries (first 100)
             oldest_keys = list(_evaluation_cache.keys())[:100]
             for key in oldest_keys:
                 del _evaluation_cache[key]
+            logger.debug(f"Cleaned evaluation cache, removed {len(oldest_keys)} entries")
         
+        logger.debug(f"Successfully evaluated response with ratings: {result}")
         return result
         
+    except openai.error.Timeout:
+        logger.error("OpenAI API timeout during response evaluation")
+    except openai.error.RateLimitError:
+        logger.error("OpenAI API rate limit exceeded during response evaluation")
+    except openai.error.APIError as e:
+        logger.error(f"OpenAI API error during response evaluation: {str(e)}")
+    except openai.error.InvalidRequestError as e:
+        logger.error(f"Invalid OpenAI API request during response evaluation: {str(e)}")
     except Exception as e:
-        logger.error(f"Error evaluating response: {str(e)}", exc_info=True)
-        result = {
+        logger.error(f"Unexpected error evaluating response: {str(e)}", exc_info=True)
+    
+    # Fallback ratings based on difficulty level
+    if difficulty_level.lower() == "beginner":
+        fallback_ratings = {
+            "technical": 5.5,
+            "communication": 6.0,
+            "problem_solving": 5.5,
+            "time_management": 6.0,
+            "overall": 5.8
+        }
+    elif difficulty_level.lower() == "advanced":
+        fallback_ratings = {
+            "technical": 6.5,
+            "communication": 6.0,
+            "problem_solving": 6.5,
+            "time_management": 6.0,
+            "overall": 6.3
+        }
+    else:  # medium or default
+        fallback_ratings = {
             "technical": 6.0,
             "communication": 6.0,
             "problem_solving": 6.0,
             "time_management": 6.0,
             "overall": 6.0
         }
-        _evaluation_cache[cache_key] = result
-        return result
     
+    logger.warning(f"Using fallback ratings for {difficulty_level} level: {fallback_ratings}")
+    
+    # Cache the fallback result
+    _evaluation_cache[cache_key] = fallback_ratings
+    return fallback_ratings
 def generate_interview_report(interview_data):
     try:
         duration = "N/A"
