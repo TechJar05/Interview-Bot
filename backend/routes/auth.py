@@ -38,7 +38,7 @@ def login():
         logger.debug(f"Login attempt for username: {username}")
 
         # --- Admin static login ---
-        if username == "admin" and password == "admin123":
+        if username == "TechjarTech" and password == "Techjar@789":
             logger.debug("Admin login successful")
             session["user"] = username
             session["role"] = "recruiter"     # adjust if you have a separate 'admin' role
